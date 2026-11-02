@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 168" role="img" aria-labelledby="title">
+  <title id="title">insight-board 仓库封面</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="0.6" stop-color="#12233f"/>
+      <stop offset="1" stop-color="#164e63"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#67e8f9"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#fb7185"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="55%" cy="45%" r="58%">
+      <stop offset="0" stop-color="#0ea5e9" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#0ea5e9" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="16" height="16" patternUnits="userSpaceOnUse">
+      <path d="M16 0H0V16" fill="none" stroke="#9bd8ff" stroke-opacity="0.09"/>
+    </pattern>
+  </defs>
+  <rect width="224" height="168" fill="url(#bg)"/>
+  <rect width="224" height="168" fill="url(#grid)"/>
+  <circle cx="112" cy="82" r="82" fill="url(#glow)"/>
+  <g opacity="0.6">
+    <path d="M32 29h160v112H32z" fill="#07111f" fill-opacity="0.55" stroke="#2c5874" stroke-opacity="0.55"/>
+    <path d="M32 47h160" stroke="#2c5874" stroke-opacity="0.55"/>
+    <circle cx="42" cy="38" r="2" fill="#fb7185"/>
+    <circle cx="50" cy="38" r="2" fill="#fbbf24"/>
+    <circle cx="58" cy="38" r="2" fill="#34d399"/>
+  </g>
+  <g opacity="0.5" stroke="#7dd3fc" stroke-width="0.8">
+    <path d="M45 123h132M45 104h132M45 85h132"/>
+  </g>
+  <g fill="url(#bar)">
+    <rect x="49" y="101" width="12" height="21" rx="2"/>
+    <rect x="68" y="88" width="12" height="34" rx="2"/>
+    <rect x="87" y="93" width="12" height="29" rx="2"/>
+    <rect x="106" y="75" width="12" height="47" rx="2"/>
+    <rect x="125" y="84" width="12" height="38" rx="2"/>
+    <rect x="144" y="64" width="12" height="58" rx="2"/>
+  </g>
+  <path d="M47 96l23-9 22 5 24-19 23 7 23-17 22-4" fill="none" stroke="url(#line)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#fff7ed">
+    <circle cx="70" cy="87" r="2.5"/>
+    <circle cx="116" cy="73" r="2.5"/>
+    <circle cx="162" cy="58" r="2.5"/>
+  </g>
+  <text x="18" y="153" fill="#bdeeff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="8" letter-spacing="2" opacity="0.72">DATA / VISUAL</text>
+</svg>

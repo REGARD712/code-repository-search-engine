@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 168" role="img" aria-labelledby="title">
+  <title id="title">leaf-boot 仓库封面</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08251f"/>
+      <stop offset="0.55" stop-color="#0b3b31"/>
+      <stop offset="1" stop-color="#17775d"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a9ffd8"/>
+      <stop offset="1" stop-color="#48d69f"/>
+    </linearGradient>
+    <linearGradient id="hex" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b9ffe3"/>
+      <stop offset="1" stop-color="#4fd3a2"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="45%" r="55%">
+      <stop offset="0" stop-color="#2ee6a0" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#2ee6a0" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse">
+      <circle cx="1.5" cy="1.5" r="1" fill="#b0ffdf" fill-opacity="0.15"/>
+    </pattern>
+  </defs>
+  <rect width="224" height="168" fill="url(#bg)"/>
+  <rect width="224" height="168" fill="url(#dots)"/>
+  <circle cx="112" cy="82" r="74" fill="url(#glow)"/>
+  <g fill="none" stroke="#62d9ad" stroke-opacity="0.35">
+    <circle cx="112" cy="81" r="56"/>
+    <path d="M112 9v18M112 135v18M40 81h18M166 81h18" stroke-linecap="round"/>
+  </g>
+  <path d="M112 28l38 22v44l-38 22-38-22V50l38-22z" fill="#0c3a30" fill-opacity="0.72" stroke="url(#hex)" stroke-width="2"/>
+  <path d="M112 42l27 16v32l-27 16-27-16V58l27-16z" fill="none" stroke="#7cf1c6" stroke-opacity="0.35"/>
+  <path d="M93 72c13-3 24 0 31 9-4 15-15 22-29 19-2-10-3-19-2-28z" fill="url(#leaf)"/>
+  <path d="M96 98c8-11 16-17 26-21" fill="none" stroke="#0b4b3a" stroke-width="1.6" stroke-linecap="round" opacity="0.7"/>
+  <path d="M111 54c5 7 6 15 3 24" fill="none" stroke="#8df7ce" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
+  <circle cx="174" cy="38" r="3" fill="#d8ffef" opacity="0.9"/>
+  <circle cx="47" cy="124" r="2" fill="#d8ffef" opacity="0.7"/>
+  <text x="18" y="151" fill="#c5ffe8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="8" letter-spacing="2" opacity="0.72">SPRING / BOOT</text>
+</svg>

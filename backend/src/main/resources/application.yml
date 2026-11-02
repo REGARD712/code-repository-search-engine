@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: code-repository-search-engine
+
+server:
+  port: 8080
+
+gitee:
+  api:
+    # Gitee OpenAPI 基础地址
+    base-url: https://gitee.com/api/v5
+    # 可选：通过环境变量 GITEE_ACCESS_TOKEN 配置个人访问令牌，不配置则匿名调用
+    access-token: ${GITEE_ACCESS_TOKEN}
+    # Gitee 单页最大 100 条
+    page-size: 100
+    # 防止异常数据导致无限翻页
+    max-pages: 1000
+    connect-timeout: 5s
+    read-timeout: 30s

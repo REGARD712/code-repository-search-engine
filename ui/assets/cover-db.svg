@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 168" role="img" aria-labelledby="title">
+  <title id="title">oxide-db 仓库封面</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a130d"/>
+      <stop offset="0.55" stop-color="#5b2b1b"/>
+      <stop offset="1" stop-color="#b05b32"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe1c6"/>
+      <stop offset="0.5" stop-color="#f7a86f"/>
+      <stop offset="1" stop-color="#d56f3d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="52%" cy="42%" r="55%">
+      <stop offset="0" stop-color="#ffc08a" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffc08a" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="15" height="15" patternUnits="userSpaceOnUse">
+      <path d="M15 0H0V15" fill="none" stroke="#ffd7b8" stroke-opacity="0.1"/>
+    </pattern>
+  </defs>
+  <rect width="224" height="168" fill="url(#bg)"/>
+  <rect width="224" height="168" fill="url(#grid)"/>
+  <circle cx="112" cy="82" r="78" fill="url(#glow)"/>
+  <g fill="none" stroke="#ffdcc4" stroke-opacity="0.3">
+    <ellipse cx="112" cy="47" rx="57" ry="17"/>
+    <ellipse cx="112" cy="132" rx="57" ry="17"/>
+    <path d="M55 47v85M169 47v85"/>
+  </g>
+  <g>
+    <ellipse cx="112" cy="47" rx="38" ry="11" fill="#3a1a11" stroke="url(#metal)" stroke-width="2"/>
+    <path d="M74 47v26c0 6 17 11 38 11s38-5 38-11V47" fill="#2b120b" fill-opacity="0.58" stroke="url(#metal)" stroke-width="2"/>
+    <ellipse cx="112" cy="73" rx="38" ry="11" fill="none" stroke="url(#metal)" stroke-width="1.2" opacity="0.7"/>
+    <path d="M74 73v26c0 6 17 11 38 11s38-5 38-11V73" fill="#2b120b" fill-opacity="0.58" stroke="url(#metal)" stroke-width="2"/>
+    <ellipse cx="112" cy="99" rx="38" ry="11" fill="none" stroke="url(#metal)" stroke-width="1.2" opacity="0.7"/>
+    <path d="M74 99v26c0 6 17 11 38 11s38-5 38-11V99" fill="#2b120b" fill-opacity="0.58" stroke="url(#metal)" stroke-width="2"/>
+  </g>
+  <g fill="#ffe9d8">
+    <circle cx="92" cy="47" r="2"/>
+    <circle cx="101" cy="47" r="2"/>
+    <circle cx="110" cy="47" r="2"/>
+  </g>
+  <path d="M157 34l6 6-6 6M172 34l6 6-6 6" fill="none" stroke="#ffd0ae" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.65"/>
+  <text x="18" y="152" fill="#ffddc8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="8" letter-spacing="2" opacity="0.72">RUST / STORAGE</text>
+</svg>

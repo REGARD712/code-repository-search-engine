@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="码寻 CodeSeek 搜索结果页原型 — 关键词搜索、图文仓库卡片与分页浏览。">
+  <meta name="theme-color" content="#f7f8fc">
+  <title>“权限管理”的搜索结果 — 码寻 CodeSeek</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="search-page">
+  <a class="skip-link" href="#main">跳到主要内容</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html" aria-label="码寻 CodeSeek 首页">
+        <svg class="brand-mark" viewBox="0 0 36 36" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="brandGradient" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#2f5bff"/>
+              <stop offset="1" stop-color="#8b5cf6"/>
+            </linearGradient>
+          </defs>
+          <rect width="36" height="36" rx="11" fill="url(#brandGradient)"/>
+          <path d="M14.6 12.4 10 18l4.6 5.6M21.4 12.4 26 18l-4.6 5.6M19.3 10.5l-2.6 15" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="brand-copy">
+          <strong>码寻</strong>
+          <small>CODESEEK</small>
+        </span>
+      </a>
+
+      <nav class="main-nav" aria-label="主导航">
+        <a class="is-active" href="index.html" aria-current="page">发现仓库</a>
+        <a href="index.html#topics">技术专题</a>
+        <a href="index.html#featured">本周精选</a>
+      </nav>
+
+      <div class="header-actions">
+        <a class="ghost-link" href="search.html">登录</a>
+        <a class="button button--sm" href="index.html">
+          返回首页
+          <svg class="button__arrow" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path d="M3.5 8h9M8.8 4.3 12.5 8l-3.7 3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <section class="search-strip" aria-label="搜索">
+    <div class="container search-strip__inner">
+      <form class="search-shell search-shell--compact" action="search.html" method="get" role="search">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" focusable="false">
+            <circle cx="10.8" cy="10.8" r="6.4" stroke="currentColor" stroke-width="1.9"/>
+            <path d="m15.6 15.6 4 4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <label class="sr-only" for="search-query">搜索仓库</label>
+        <input
+          class="search-input"
+          id="search-query"
+          name="q"
+          type="search"
+          value="权限管理"
+          placeholder="搜索仓库名称、简介或技术栈"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <kbd class="search-kbd" aria-hidden="true">Enter</kbd>
+        <button class="search-submit" type="submit" aria-label="搜索">
+          <span>搜索</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path d="M3.5 8h9M8.8 4.3 12.5 8l-3.7 3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </form>
+
+      <span class="search-scope">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <path d="M12 3.8l7 3v5.5c0 4.4-3 7.5-7 8.7-4-1.2-7-4.3-7-8.7V6.8l7-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="m8.9 12 2 2 4.2-4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        仅搜索公开仓库
+      </span>
+    </div>
+  </section>
+
+  <main class="results-main" id="main">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="面包屑">
+        <a href="index.html">首页</a>
+        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+          <path d="m6 3.5 4 4.5-4 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span aria-current="page">搜索</span>
+      </nav>
+
+      <header class="results-head">
+        <div>
+          <p class="kicker">SEARCH RESULTS</p>
+          <h1 id="results"><span>“权限管理”</span> 的搜索结果</h1>
+          <p class="results-sub">
+            找到 <strong>1,248</strong> 个仓库
+            <span class="dot" aria-hidden="true">·</span>
+            用时 0.28 秒
+            <span class="dot" aria-hidden="true">·</span>
+            已排除私有与已删除仓库
+          </p>
+        </div>
+        <span class="view-pill">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+            <rect x="2.2" y="2.2" width="4.8" height="4.8" rx="1" stroke="currentColor" stroke-width="1.2"/>
+            <rect x="9" y="2.2" width="4.8" height="4.8" rx="1" stroke="currentColor" stroke-width="1.2"/>
+            <rect x="2.2" y="9" width="4.8" height="4.8" rx="1" stroke="currentColor" stroke-width="1.2"/>
+            <rect x="9" y="9" width="4.8" height="4.8" rx="1" stroke="currentColor" stroke-width="1.2"/>
+          </svg>
+          图文视图
+        </span>
+      </header>
+
+      <div class="result-toolbar">
+        <div class="sort-tabs" aria-label="结果排序">
+          <a class="sort-tab is-active" href="#results" aria-current="true">综合排序</a>
+          <a class="sort-tab" href="#results">最多 Star</a>
+          <a class="sort-tab" href="#results">最近更新</a>
+          <a class="sort-tab" href="#results">最多 Fork</a>
+        </div>
+        <span class="toolbar-side">第 1 / 63 页</span>
+      </div>
+
+      <div class="repo-list">
+        <a class="repo-card" href="#results" aria-label="查看仓库 northstar-labs/veil-auth">
+          <span class="repo-card__media">
+            <img src="assets/cover-security.svg" alt="northstar-labs/veil-auth 的仓库封面" width="112" height="84" loading="eager" decoding="async">
+          </span>
+          <span class="repo-card__body">
+            <span class="repo-card__head">
+              <span class="repo-title">
+                <span class="repo-owner">northstar-labs</span>
+                <span class="repo-slash">/</span>
+                <span class="repo-name">veil-auth</span>
+              </span>
+            </span>
+            <span class="repo-desc">面向多租户场景的<mark>权限管理</mark>与 <mark>RBAC</mark> 框架，内置组织架构、数据权限与审计日志。</span>
+            <span class="repo-topics">
+              <span class="topic">权限管理</span>
+              <span class="topic">RBAC</span>
+              <span class="topic">Spring Boot</span>
+            </span>
+            <span class="repo-meta">
+              <span class="meta-item meta-item--star" title="1,240 Stars">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <path d="m8 2.2 1.7 3.5 3.8.6-2.8 2.7.7 3.8L8 11l-3.4 1.8.7-3.8-2.8-2.7 3.8-.6L8 2.2Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/>
+                </svg>
+                1.2k
+              </span>
+              <span class="meta-item meta-item--fork" title="230 Forks">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <circle cx="4.2" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="11.8" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="8" cy="12.6" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <path d="M4.2 5.2v1.1c0 1.1.9 2 2 2h3.6c1.1 0 2-.9 2-2V5.2M8 8.3v2.5" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/>
+                </svg>
+                230
+              </span>
+              <span class="lang"><i class="lang-dot" style="--lang: #b07219" aria-hidden="true"></i>Java</span>
+              <span class="meta-license">Apache-2.0</span>
+              <span class="meta-updated">2 天前更新</span>
+            </span>
+          </span>
+          <span class="repo-card__arrow" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none" focusable="false">
+              <path d="M4 8h8M8.8 4.8 12 8l-3.2 3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </a>
+
+        <a class="repo-card" href="#results" aria-label="查看仓库 lumen-labs/lowcode-studio">
+          <span class="repo-card__media">
+            <img src="assets/cover-lowcode.svg" alt="lumen-labs/lowcode-studio 的仓库封面" width="112" height="84" loading="eager" decoding="async">
+          </span>
+          <span class="repo-card__body">
+            <span class="repo-card__head">
+              <span class="repo-title">
+                <span class="repo-owner">lumen-labs</span>
+                <span class="repo-slash">/</span>
+                <span class="repo-name">lowcode-studio</span>
+              </span>
+            </span>
+            <span class="repo-desc">可视化拖拽搭建中后台页面，支持自定义物料、Schema 协议与多人协作。</span>
+            <span class="repo-topics">
+              <span class="topic">低代码</span>
+              <span class="topic">可视化</span>
+              <span class="topic">TypeScript</span>
+            </span>
+            <span class="repo-meta">
+              <span class="meta-item meta-item--star" title="2,800 Stars">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <path d="m8 2.2 1.7 3.5 3.8.6-2.8 2.7.7 3.8L8 11l-3.4 1.8.7-3.8-2.8-2.7 3.8-.6L8 2.2Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/>
+                </svg>
+                2.8k
+              </span>
+              <span class="meta-item meta-item--fork" title="412 Forks">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <circle cx="4.2" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="11.8" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="8" cy="12.6" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <path d="M4.2 5.2v1.1c0 1.1.9 2 2 2h3.6c1.1 0 2-.9 2-2V5.2M8 8.3v2.5" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/>
+                </svg>
+                412
+              </span>
+              <span class="lang"><i class="lang-dot" style="--lang: #3178c6" aria-hidden="true"></i>TypeScript</span>
+              <span class="meta-license">MIT</span>
+              <span class="meta-updated">6 小时前更新</span>
+            </span>
+          </span>
+          <span class="repo-card__arrow" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none" focusable="false">
+              <path d="M4 8h8M8.8 4.8 12 8l-3.2 3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </a>
+
+        <a class="repo-card" href="#results" aria-label="查看仓库 spring-forge/leaf-boot">
+          <span class="repo-card__media">
+            <img src="assets/cover-spring.svg" alt="spring-forge/leaf-boot 的仓库封面" width="112" height="84" loading="eager" decoding="async">
+          </span>
+          <span class="repo-card__body">
+            <span class="repo-card__head">
+              <span class="repo-title">
+                <span class="repo-owner">spring-forge</span>
+                <span class="repo-slash">/</span>
+                <span class="repo-name">leaf-boot</span>
+              </span>
+            </span>
+            <span class="repo-desc">开箱即用的 Spring Boot <mark>权限管理</mark>脚手架，集成 JWT、Redis 与统一异常处理。</span>
+            <span class="repo-topics">
+              <span class="topic">权限管理</span>
+              <span class="topic">脚手架</span>
+              <span class="topic">JWT</span>
+            </span>
+            <span class="repo-meta">
+              <span class="meta-item meta-item--star" title="934 Stars">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <path d="m8 2.2 1.7 3.5 3.8.6-2.8 2.7.7 3.8L8 11l-3.4 1.8.7-3.8-2.8-2.7 3.8-.6L8 2.2Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/>
+                </svg>
+                934
+              </span>
+              <span class="meta-item meta-item--fork" title="87 Forks">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <circle cx="4.2" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="11.8" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="8" cy="12.6" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <path d="M4.2 5.2v1.1c0 1.1.9 2 2 2h3.6c1.1 0 2-.9 2-2V5.2M8 8.3v2.5" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/>
+                </svg>
+                87
+              </span>
+              <span class="lang"><i class="lang-dot" style="--lang: #b07219" aria-hidden="true"></i>Java</span>
+              <span class="meta-license">Apache-2.0</span>
+              <span class="meta-updated">1 天前更新</span>
+            </span>
+          </span>
+          <span class="repo-card__arrow" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none" focusable="false">
+              <path d="M4 8h8M8.8 4.8 12 8l-3.2 3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </a>
+
+        <a class="repo-card" href="#results" aria-label="查看仓库 data-craft/insight-board">
+          <span class="repo-card__media">
+            <img src="assets/cover-data.svg" alt="data-craft/insight-board 的仓库封面" width="112" height="84" loading="eager" decoding="async">
+          </span>
+          <span class="repo-card__body">
+            <span class="repo-card__head">
+              <span class="repo-title">
+                <span class="repo-owner">data-craft</span>
+                <span class="repo-slash">/</span>
+                <span class="repo-name">insight-board</span>
+              </span>
+            </span>
+            <span class="repo-desc">面向业务分析的轻量级数据看板，拖拽配置图表、指标卡与筛选联动。</span>
+            <span class="repo-topics">
+              <span class="topic">数据可视化</span>
+              <span class="topic">Dashboard</span>
+              <span class="topic">React</span>
+            </span>
+            <span class="repo-meta">
+              <span class="meta-item meta-item--star" title="1,700 Stars">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <path d="m8 2.2 1.7 3.5 3.8.6-2.8 2.7.7 3.8L8 11l-3.4 1.8.7-3.8-2.8-2.7 3.8-.6L8 2.2Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/>
+                </svg>
+                1.7k
+              </span>
+              <span class="meta-item meta-item--fork" title="198 Forks">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <circle cx="4.2" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="11.8" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="8" cy="12.6" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <path d="M4.2 5.2v1.1c0 1.1.9 2 2 2h3.6c1.1 0 2-.9 2-2V5.2M8 8.3v2.5" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/>
+                </svg>
+                198
+              </span>
+              <span class="lang"><i class="lang-dot" style="--lang: #3178c6" aria-hidden="true"></i>TypeScript</span>
+              <span class="meta-license">MIT</span>
+              <span class="meta-updated">3 天前更新</span>
+            </span>
+          </span>
+          <span class="repo-card__arrow" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none" focusable="false">
+              <path d="M4 8h8M8.8 4.8 12 8l-3.2 3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </a>
+
+        <a class="repo-card" href="#results" aria-label="查看仓库 weave-lab/mini-flow">
+          <span class="repo-card__media">
+            <img src="assets/cover-miniapp.svg" alt="weave-lab/mini-flow 的仓库封面" width="112" height="84" loading="lazy" decoding="async">
+          </span>
+          <span class="repo-card__body">
+            <span class="repo-card__head">
+              <span class="repo-title">
+                <span class="repo-owner">weave-lab</span>
+                <span class="repo-slash">/</span>
+                <span class="repo-name">mini-flow</span>
+              </span>
+            </span>
+            <span class="repo-desc">小程序端流程编排组件，支持表单、审批、消息通知与低代码配置。</span>
+            <span class="repo-topics">
+              <span class="topic">微信小程序</span>
+              <span class="topic">工作流</span>
+              <span class="topic">组件库</span>
+            </span>
+            <span class="repo-meta">
+              <span class="meta-item meta-item--star" title="642 Stars">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <path d="m8 2.2 1.7 3.5 3.8.6-2.8 2.7.7 3.8L8 11l-3.4 1.8.7-3.8-2.8-2.7 3.8-.6L8 2.2Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/>
+                </svg>
+                642
+              </span>
+              <span class="meta-item meta-item--fork" title="73 Forks">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <circle cx="4.2" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="11.8" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="8" cy="12.6" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <path d="M4.2 5.2v1.1c0 1.1.9 2 2 2h3.6c1.1 0 2-.9 2-2V5.2M8 8.3v2.5" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/>
+                </svg>
+                73
+              </span>
+              <span class="lang"><i class="lang-dot" style="--lang: #3178c6" aria-hidden="true"></i>TypeScript</span>
+              <span class="meta-license">MIT</span>
+              <span class="meta-updated">1 周前更新</span>
+            </span>
+          </span>
+          <span class="repo-card__arrow" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none" focusable="false">
+              <path d="M4 8h8M8.8 4.8 12 8l-3.2 3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </a>
+
+        <a class="repo-card" href="#results" aria-label="查看仓库 neural-garden/tiny-llm-notes">
+          <span class="repo-card__media">
+            <img src="assets/cover-ai.svg" alt="neural-garden/tiny-llm-notes 的仓库封面" width="112" height="84" loading="lazy" decoding="async">
+          </span>
+          <span class="repo-card__body">
+            <span class="repo-card__head">
+              <span class="repo-title">
+                <span class="repo-owner">neural-garden</span>
+                <span class="repo-slash">/</span>
+                <span class="repo-name">tiny-llm-notes</span>
+              </span>
+            </span>
+            <span class="repo-desc">从零实现一个小型语言模型，配套中文注释、训练脚本与完整读书笔记。</span>
+            <span class="repo-topics">
+              <span class="topic">大模型</span>
+              <span class="topic">NLP</span>
+              <span class="topic">教程</span>
+            </span>
+            <span class="repo-meta">
+              <span class="meta-item meta-item--star" title="4,600 Stars">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <path d="m8 2.2 1.7 3.5 3.8.6-2.8 2.7.7 3.8L8 11l-3.4 1.8.7-3.8-2.8-2.7 3.8-.6L8 2.2Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/>
+                </svg>
+                4.6k
+              </span>
+              <span class="meta-item meta-item--fork" title="690 Forks">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <circle cx="4.2" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="11.8" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="8" cy="12.6" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <path d="M4.2 5.2v1.1c0 1.1.9 2 2 2h3.6c1.1 0 2-.9 2-2V5.2M8 8.3v2.5" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/>
+                </svg>
+                690
+              </span>
+              <span class="lang"><i class="lang-dot" style="--lang: #3572a5" aria-hidden="true"></i>Python</span>
+              <span class="meta-license">MIT</span>
+              <span class="meta-updated">9 小时前更新</span>
+            </span>
+          </span>
+          <span class="repo-card__arrow" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none" focusable="false">
+              <path d="M4 8h8M8.8 4.8 12 8l-3.2 3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </a>
+
+        <a class="repo-card" href="#results" aria-label="查看仓库 rusty-box/oxide-db">
+          <span class="repo-card__media">
+            <img src="assets/cover-db.svg" alt="rusty-box/oxide-db 的仓库封面" width="112" height="84" loading="lazy" decoding="async">
+          </span>
+          <span class="repo-card__body">
+            <span class="repo-card__head">
+              <span class="repo-title">
+                <span class="repo-owner">rusty-box</span>
+                <span class="repo-slash">/</span>
+                <span class="repo-name">oxide-db</span>
+              </span>
+            </span>
+            <span class="repo-desc">用 Rust 编写的嵌入式键值数据库，支持 WAL、事务快照与多版本并发控制。</span>
+            <span class="repo-topics">
+              <span class="topic">Rust</span>
+              <span class="topic">数据库</span>
+              <span class="topic">存储引擎</span>
+            </span>
+            <span class="repo-meta">
+              <span class="meta-item meta-item--star" title="2,100 Stars">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <path d="m8 2.2 1.7 3.5 3.8.6-2.8 2.7.7 3.8L8 11l-3.4 1.8.7-3.8-2.8-2.7 3.8-.6L8 2.2Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/>
+                </svg>
+                2.1k
+              </span>
+              <span class="meta-item meta-item--fork" title="164 Forks">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <circle cx="4.2" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="11.8" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="8" cy="12.6" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <path d="M4.2 5.2v1.1c0 1.1.9 2 2 2h3.6c1.1 0 2-.9 2-2V5.2M8 8.3v2.5" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/>
+                </svg>
+                164
+              </span>
+              <span class="lang"><i class="lang-dot" style="--lang: #dea584" aria-hidden="true"></i>Rust</span>
+              <span class="meta-license">Apache-2.0</span>
+              <span class="meta-updated">4 天前更新</span>
+            </span>
+          </span>
+          <span class="repo-card__arrow" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none" focusable="false">
+              <path d="M4 8h8M8.8 4.8 12 8l-3.2 3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </a>
+
+        <a class="repo-card" href="#results" aria-label="查看仓库 moss-ui/moss-design，已归档">
+          <span class="repo-card__media repo-card__media--fallback" role="img" aria-label="moss-ui/moss-design 的默认封面">
+            M
+          </span>
+          <span class="repo-card__body">
+            <span class="repo-card__head">
+              <span class="repo-title">
+                <span class="repo-owner">moss-ui</span>
+                <span class="repo-slash">/</span>
+                <span class="repo-name">moss-design</span>
+              </span>
+              <span class="badge badge--archived">已归档</span>
+            </span>
+            <span class="repo-desc">一套面向中后台的 React 组件库，强调可访问性、主题定制与设计系统一致性。</span>
+            <span class="repo-topics">
+              <span class="topic">组件库</span>
+              <span class="topic">React</span>
+              <span class="topic">设计系统</span>
+            </span>
+            <span class="repo-meta">
+              <span class="meta-item meta-item--star" title="386 Stars">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <path d="m8 2.2 1.7 3.5 3.8.6-2.8 2.7.7 3.8L8 11l-3.4 1.8.7-3.8-2.8-2.7 3.8-.6L8 2.2Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/>
+                </svg>
+                386
+              </span>
+              <span class="meta-item meta-item--fork" title="42 Forks">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+                  <circle cx="4.2" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="11.8" cy="3.4" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <circle cx="8" cy="12.6" r="1.8" stroke="currentColor" stroke-width="1.15"/>
+                  <path d="M4.2 5.2v1.1c0 1.1.9 2 2 2h3.6c1.1 0 2-.9 2-2V5.2M8 8.3v2.5" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/>
+                </svg>
+                42
+              </span>
+              <span class="lang"><i class="lang-dot" style="--lang: #3178c6" aria-hidden="true"></i>TypeScript</span>
+              <span class="meta-license">MIT</span>
+              <span class="meta-updated">8 个月前更新</span>
+            </span>
+          </span>
+          <span class="repo-card__arrow" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none" focusable="false">
+              <path d="M4 8h8M8.8 4.8 12 8l-3.2 3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </a>
+      </div>
+
+      <div class="pagination-bar">
+        <p class="pagination-summary">共 <strong>1,248</strong> 个结果</p>
+
+        <nav class="pagination pagination--desktop" aria-label="搜索结果分页">
+          <span class="page-btn is-disabled" aria-disabled="true">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+              <path d="M10 3.5 5.5 8l4.5 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            上一页
+          </span>
+          <a class="page-num is-active" href="#results" aria-current="page">1</a>
+          <a class="page-num" href="#results" aria-label="第 2 页">2</a>
+          <a class="page-num" href="#results" aria-label="第 3 页">3</a>
+          <a class="page-num" href="#results" aria-label="第 4 页">4</a>
+          <a class="page-num" href="#results" aria-label="第 5 页">5</a>
+          <span class="page-ellipsis" aria-hidden="true">…</span>
+          <a class="page-num" href="#results" aria-label="第 63 页">63</a>
+          <a class="page-btn" href="#results">
+            下一页
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+              <path d="m6 3.5 4.5 4.5L6 12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+        </nav>
+
+        <nav class="pagination pagination--mobile" aria-label="搜索结果分页（移动端）">
+          <span class="page-btn is-disabled" aria-disabled="true">上一页</span>
+          <span class="pagination-counter">第 <strong>1</strong> / 63 页</span>
+          <a class="page-btn" href="#results">下一页</a>
+        </nav>
+
+        <label class="per-page">
+          每页
+          <span class="select-wrap">
+            <select aria-label="每页条数">
+              <option>10 条</option>
+              <option selected>20 条</option>
+              <option>50 条</option>
+            </select>
+          </span>
+        </label>
+      </div>
+
+      <aside class="search-tip" aria-label="搜索小贴士">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M12 10.7v5M12 7.8v.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+        <p><strong>搜索小贴士：</strong>多个关键词用空格分隔，结果会同时包含这些词。例如 <kbd>Java</kbd> <kbd>权限管理</kbd>，可以更快缩小范围。</p>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="index.html" aria-label="码寻 CodeSeek 首页">
+            <svg class="brand-mark" viewBox="0 0 36 36" aria-hidden="true" focusable="false">
+              <defs>
+                <linearGradient id="footerBrandGradient" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#2f5bff"/>
+                  <stop offset="1" stop-color="#8b5cf6"/>
+                </linearGradient>
+              </defs>
+              <rect width="36" height="36" rx="11" fill="url(#footerBrandGradient)"/>
+              <path d="M14.6 12.4 10 18l4.6 5.6M21.4 12.4 26 18l-4.6 5.6M19.3 10.5l-2.6 15" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="brand-copy">
+              <strong>码寻</strong>
+              <small>CODESEEK</small>
+            </span>
+          </a>
+          <p>用关键词发现值得读的开源仓库。图文结果、稳定分页，让技术选型少走一点弯路。</p>
+          <span class="footer-badge"><i aria-hidden="true"></i> PROTOTYPE / V1.0</span>
+        </div>
+
+        <div class="footer-column">
+          <h3>产品</h3>
+          <a href="search.html">搜索仓库</a>
+          <a href="index.html#featured">本周精选</a>
+          <a href="index.html#topics">技术专题</a>
+        </div>
+
+        <div class="footer-column">
+          <h3>开发者</h3>
+          <a href="search.html">搜索接口</a>
+          <a href="search.html">数据说明</a>
+          <a href="search.html">状态页</a>
+        </div>
+
+        <div class="footer-column">
+          <h3>关于</h3>
+          <a href="search.html">关于码寻</a>
+          <a href="search.html">隐私政策</a>
+          <a href="search.html">问题反馈</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2026 码寻 CodeSeek · 本页面为产品原型，展示的仓库与数据均为虚构。</p>
+        <a href="#main">回到顶部 ↑</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
