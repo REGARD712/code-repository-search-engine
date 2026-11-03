@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  仓库表 Mapper SQL。
+  表列名使用驼峰命名，通过 resultMap 明确映射，避免依赖数据库大小写规则。
+-->
+<mapper namespace="com.codeseek.repository.mapper.RepositoryMapper">
+
+    <!-- 仓库表字段与 Java 属性的映射关系 -->
+    <resultMap id="RepositoryResultMap" type="com.codeseek.repository.entity.Repository">
+        <id column="id" property="id"/>
+        <result column="fullName" property="fullName"/>
+        <result column="htmlUrl" property="htmlUrl"/>
+        <result column="readme" property="readme"/>
+        <result column="repositoryId" property="repositoryId"/>
+    </resultMap>
+
+    <!-- 通用查询字段，统一使用反引号保护驼峰列名 -->
+    <sql id="Base_Column_List">
+        `id`, `fullName`, `htmlUrl`, `readme`, `repositoryId`
+    </sql>
+
+    <!-- 新增单个仓库，并回填自增主键 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO `repository` (`fullName`, `htmlUrl`, `readme`, `repositoryId`)
+        VALUES (#{fullName}, #{htmlUrl}, #{readme,jdbcType=LONGVARCHAR}, #{repositoryId,jdbcType=BIGINT})
+    </insert>
+
+    <!-- 批量新增仓库，减少逐条插入的数据库往返次数 -->
+    <insert id="batchInsert">
+        INSERT INTO `repository` (`fullName`, `htmlUrl`, `readme`, `repositoryId`)
+        VALUES
+        <foreach collection="repositories" item="item" separator=",">
+            (#{item.fullName}, #{item.htmlUrl},
+             #{item.readme,jdbcType=LONGVARCHAR}, #{item.repositoryId,jdbcType=BIGINT})
+        </foreach>
+    </insert>
+
+    <!-- 根据数据库主键查询 -->
+    <select id="selectById" resultMap="RepositoryResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM `repository`
+        WHERE `id` = #{id}
+    </select>
+
+    <!-- 根据 Gitee 仓库 ID 查询，索引不是唯一索引，因此返回列表 -->
+    <select id="selectByRepositoryId" resultMap="RepositoryResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM `repository`
+        WHERE `repositoryId` = #{repositoryId}
+        ORDER BY `id` ASC
+    </select>
+
+    <!-- 根据仓库全名查询，索引不是唯一索引，因此返回列表 -->
+    <select id="selectByFullName" resultMap="RepositoryResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM `repository`
+        WHERE `fullName` = #{fullName}
+        ORDER BY `id` ASC
+    </select>
+
+    <!-- 查询全部仓库，按主键升序保证结果稳定 -->
+    <select id="selectAll" resultMap="RepositoryResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM `repository`
+        ORDER BY `id` ASC
+    </select>
+
+    <!-- 分页查询仓库，使用标准 LIMIT/OFFSET 语法 -->
+    <select id="selectPage" resultMap="RepositoryResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM `repository`
+        ORDER BY `id` ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 统计仓库总数 -->
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*)
+        FROM `repository`
+    </select>
+
+    <!-- 按主键更新全部字段 -->
+    <update id="update">
+        UPDATE `repository`
+        SET `fullName` = #{fullName},
+            `htmlUrl` = #{htmlUrl},
+            `readme` = #{readme,jdbcType=LONGVARCHAR},
+            `repositoryId` = #{repositoryId,jdbcType=BIGINT}
+        WHERE `id` = #{id}
+    </update>
+
+    <!-- 只更新 README，适合仓库内容增量同步 -->
+    <update id="updateReadme">
+        UPDATE `repository`
+        SET `readme` = #{readme,jdbcType=LONGVARCHAR}
+        WHERE `id` = #{id}
+    </update>
+
+    <!-- 根据主键删除仓库 -->
+    <delete id="deleteById">
+        DELETE FROM `repository`
+        WHERE `id` = #{id}
+    </delete>
+</mapper>

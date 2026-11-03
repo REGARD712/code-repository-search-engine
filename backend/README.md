@@ -1,6 +1,6 @@
 # Code Repository Search Engine — Backend
 
-代码仓库搜索引擎的后端项目，已搭好 Spring Boot 基础结构，并封装了 Gitee 用户、仓库和 README 查询接口；暂不包含业务 Controller、数据库和前端联调代码。
+代码仓库搜索引擎的后端项目，已搭好 Spring Boot 基础结构，封装了 Gitee 用户、仓库和 README 查询接口，并生成了仓库表的实体与 MyBatis Mapper；暂不包含业务 Controller 和前端联调代码。
 
 ## 技术栈
 
@@ -10,6 +10,9 @@
 | Java | 17（Spring Boot 3 最低要求） |
 | Maven | 3.8.1（通过 Maven Wrapper 固定） |
 | Web | Spring Boot Starter Web |
+| 持久层 | MyBatis 3.5.x（mybatis-spring-boot-starter 3.0.3） |
+| 数据库 | MySQL 8.x，测试环境使用 H2 |
+| 工具 | Lombok |
 | 测试 | Spring Boot Starter Test / JUnit 5 |
 
 > 本机可能安装了其他 Maven 版本（例如 3.8.5），请使用项目内的 `mvnw` / `mvnw.cmd`，不要直接使用系统 `mvn`，以确保构建使用 3.8.1。
@@ -24,20 +27,29 @@ backend/
 ├── src/
 │   ├── main/
 │   │   ├── java/com/codeseek/
-│   │   │   ├── CodeRepositorySearchEngineApplication.java
-│   │   │   └── gitee/
-│   │   │       ├── api/GiteeApi.java                 # 面向业务层的接口契约
-│   │   │       ├── client/GiteeApiClient.java        # RestClient 实现、分页与字段映射
-│   │   │       ├── config/GiteeApiConfiguration.java # 客户端装配
-│   │   │       ├── config/GiteeApiProperties.java    # gitee.api 配置
-│   │   │       ├── exception/GiteeApiException.java  # 统一异常
-│   │   │       └── model/GiteeRepository.java        # 仓库统一模型
+│   │   │   ├── SearchEngineApplication.java          # 启动类
+│   │   │   ├── gitee/
+│   │   │   │   ├── api/GiteeApi.java                 # 面向业务层的接口契约
+│   │   │   │   ├── client/GiteeApiClient.java        # RestClient 实现、分页与字段映射
+│   │   │   │   ├── config/GiteeApiConfiguration.java # 客户端装配
+│   │   │   │   ├── config/GiteeApiProperties.java    # gitee.api 配置
+│   │   │   │   ├── exception/GiteeApiException.java  # 统一异常
+│   │   │   │   └── model/GiteeRepository.java        # Gitee 仓库统一模型
+│   │   │   └── repository/
+│   │   │       ├── entity/Repository.java            # 仓库表实体
+│   │   │       └── mapper/RepositoryMapper.java      # 仓库表 Mapper 接口
 │   │   └── resources/
+│   │       ├── mapper/RepositoryMapper.xml           # 仓库表 Mapper SQL
+│   │       ├── db/schema.sql                         # MySQL 建表脚本
 │   │       └── application.yml
 │   └── test/
-│       └── java/com/codeseek/
-│           ├── CodeRepositorySearchEngineApplicationTests.java
-│           └── gitee/client/GiteeApiClientTest.java
+│       ├── java/com/codeseek/
+│       │   ├── SearchEngineApplicationTests.java     # Gitee 实际接口调试用例
+│       │   ├── gitee/client/GiteeApiClientTest.java  # Gitee 客户端单元测试
+│       │   └── repository/mapper/RepositoryMapperTest.java
+│       └── resources/
+│           ├── application.yml                       # H2 测试数据源
+│           └── db/repository-h2.sql                  # H2 测试表结构
 ├── mvnw
 ├── mvnw.cmd
 ├── pom.xml
@@ -95,9 +107,14 @@ macOS / Linux 将 `.\mvnw.cmd` 替换为 `./mvnw`。
 spring:
   application:
     name: code-repository-search-engine
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3306/search_engine?...}
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
-server:
-  port: 8080
+mybatis:
+  mapper-locations: classpath*:mapper/**/*.xml
 
 gitee:
   api:
@@ -108,6 +125,58 @@ gitee:
     connect-timeout: 5s
     read-timeout: 30s
 ```
+
+数据库连接参数可通过环境变量覆盖：
+
+```powershell
+$env:MYSQL_URL = "jdbc:mysql://127.0.0.1:3306/search_engine?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false"
+$env:MYSQL_USERNAME = "root"
+$env:MYSQL_PASSWORD = "你的密码"
+```
+
+## 仓库表实体与 Mapper
+
+### 建表脚本
+
+建表脚本位于 [schema.sql](src/main/resources/db/schema.sql)。原始 DDL 的索引定义写在了字段列表内部，直接执行会报语法错误；脚本中已修正为合法的 `INDEX` 声明，并保留原有字段名、索引名和 `AUTO_INCREMENT=10000001`。
+
+```bash
+mysql -u root -p < backend/src/main/resources/db/schema.sql
+```
+
+### 实体
+
+[Repository.java](src/main/java/com/codeseek/repository/entity/Repository.java) 对应 `repository` 表，字段为：
+
+| Java 字段 | 数据库列 | 说明 |
+| --- | --- | --- |
+| `id` | `id` | 自增主键 |
+| `fullName` | `fullName` | 仓库全名 |
+| `htmlUrl` | `htmlUrl` | 仓库网页地址 |
+| `readme` | `readme` | README 文本 |
+| `repositoryId` | `repositoryId` | Gitee 仓库 ID |
+
+实体使用 Lombok 的 `@Data`、`@NoArgsConstructor`、`@AllArgsConstructor` 生成访问方法。
+
+### Mapper
+
+[RepositoryMapper.java](src/main/java/com/codeseek/repository/mapper/RepositoryMapper.java) 提供以下操作，SQL 位于 [RepositoryMapper.xml](src/main/resources/mapper/RepositoryMapper.xml)：
+
+| 方法 | 说明 |
+| --- | --- |
+| `insert` | 新增仓库并回填自增主键 |
+| `batchInsert` | 批量新增仓库 |
+| `selectById` | 按数据库主键查询 |
+| `selectByRepositoryId` | 按 Gitee 仓库 ID 查询，返回列表 |
+| `selectByFullName` | 按仓库全名查询，返回列表 |
+| `selectAll` | 查询全部仓库 |
+| `selectPage` | 按 offset/limit 分页查询 |
+| `countAll` | 统计仓库总数 |
+| `update` | 按主键更新全部字段 |
+| `updateReadme` | 单独更新 README |
+| `deleteById` | 按主键删除 |
+
+由于 `repositoryId` 和 `fullName` 在原始表结构中都是普通索引而非唯一索引，对应查询方法返回 `List<Repository>`，避免重复数据导致 `TooManyResultsException`。
 
 ## Gitee API 客户端
 
@@ -173,7 +242,13 @@ public class GiteeRepositorySyncService {
 
 ## 测试说明
 
-测试包含 Spring 上下文加载和 8 个 Gitee API 客户端测试，覆盖分页、字段映射、私有仓库过滤、README 解码、404 和 HTTP 错误处理。若运行环境限制 JVM 自附加（例如部分受限沙箱），Mockito 可能初始化失败，可追加：
+测试包含：
+
+- 8 个 Gitee API 客户端单元测试，覆盖分页、字段映射、私有仓库过滤、README 解码、404 和 HTTP 错误处理。
+- 2 个基于 H2 的 `RepositoryMapper` 集成测试，覆盖新增、批量新增、查询、分页、更新和删除。
+- `SearchEngineApplicationTests` 中 4 个调用 Gitee 实际接口的调试用例，运行全量测试时需要能访问 Gitee；如只验证本地代码，可单独执行 `GiteeApiClientTest` 和 `RepositoryMapperTest`。
+
+若运行环境限制 JVM 自附加（例如部分受限沙箱），Mockito 可能初始化失败，可追加：
 
 ```powershell
 .\mvnw.cmd test "-DargLine=-Djdk.attach.allowAttachSelf=true"
@@ -183,7 +258,7 @@ public class GiteeRepositorySyncService {
 
 ## 后续建议
 
-1. 基于 `GiteeApi` 增加仓库同步服务、数据去重和失败重试。
+1. 基于 `GiteeApi` 和 `RepositoryMapper` 增加仓库同步服务：拉取用户/组织仓库、补 README、落库并去重。
 2. 按 PRD 增加对外搜索接口、分页参数与统一响应体。
 3. 接入搜索索引（Elasticsearch / OpenSearch）与增量同步任务。
 4. 增加统一异常处理、参数校验、接口文档（SpringDoc）和日志规范。
