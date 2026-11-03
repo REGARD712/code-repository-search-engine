@@ -4,20 +4,21 @@ import com.codeseek.repository.entity.Repository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.jdbc.Sql;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 仓库表 Mapper 集成测试。
  *
- * <p>测试使用 H2 内存数据库，每次方法执行前重建表，
- * 验证新增、批量新增、查询、分页、更新和删除 SQL。</p>
+ * <p>测试直接连接 application.yml 配置的 MySQL 数据库，
+ * 使用事务回滚保证测试数据不会污染实际数据。运行前需先执行 schema.sql 建表。</p>
  */
 @SpringBootTest
-@Sql(scripts = "/db/repository-h2.sql")
+@Transactional
 class RepositoryMapperTest {
 
     @Autowired
@@ -28,18 +29,26 @@ class RepositoryMapperTest {
      */
     @Test
     void shouldInsertAndSelectById() {
+        String suffix = UUID.randomUUID().toString().replace("-", "");
         Repository repository = new Repository(
                 null,
-                "oschina/git-osc",
-                "https://gitee.com/oschina/git-osc",
+                "test-owner/repo-" + suffix,
+                "https://gitee.com/test-owner/repo-" + suffix,
                 "# Git OSC",
-                151L
+                System.nanoTime()
         );
 
         int rows = repositoryMapper.insert(repository);
+
+        assertThat(rows).isEqualTo(1);
+        assertThat(repository.getId()).isNotNull();
         System.out.println(rows);
 
         Repository saved = repositoryMapper.selectById(repository.getId());
+        assertThat(saved).isNotNull();
+        assertThat(saved.getFullName()).isEqualTo(repository.getFullName());
+        assertThat(saved.getReadme()).isEqualTo("# Git OSC");
+        assertThat(saved.getRepositoryId()).isEqualTo(repository.getRepositoryId());
         System.out.println(saved.toString());
     }
 
@@ -48,28 +57,35 @@ class RepositoryMapperTest {
      */
     @Test
     void shouldBatchInsertAndSupportCrud() {
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        long repositoryIdA = System.nanoTime();
+        long repositoryIdB = repositoryIdA + 1;
+
         List<Repository> repositories = List.of(
-                new Repository(null, "demo-org/repo-a", "https://gitee.com/demo-org/repo-a", "A", 1001L),
-                new Repository(null, "demo-org/repo-b", "https://gitee.com/demo-org/repo-b", "B", 1002L)
+                new Repository(null, "test-org/repo-a-" + suffix,
+                        "https://gitee.com/test-org/repo-a-" + suffix, "A", repositoryIdA),
+                new Repository(null, "test-org/repo-b-" + suffix,
+                        "https://gitee.com/test-org/repo-b-" + suffix, "B", repositoryIdB)
         );
 
+        long countBefore = repositoryMapper.countAll();
         int rows = repositoryMapper.batchInsert(repositories);
 
         assertThat(rows).isEqualTo(2);
-        assertThat(repositoryMapper.countAll()).isEqualTo(2);
+        assertThat(repositoryMapper.countAll()).isGreaterThanOrEqualTo(countBefore + 2);
 
-        List<Repository> byRepositoryId = repositoryMapper.selectByRepositoryId(1001L);
+        List<Repository> byRepositoryId = repositoryMapper.selectByRepositoryId(repositoryIdA);
         assertThat(byRepositoryId).hasSize(1);
-        assertThat(byRepositoryId.get(0).getFullName()).isEqualTo("demo-org/repo-a");
+        assertThat(byRepositoryId.get(0).getFullName()).isEqualTo("test-org/repo-a-" + suffix);
 
-        List<Repository> byFullName = repositoryMapper.selectByFullName("demo-org/repo-b");
+        List<Repository> byFullName = repositoryMapper.selectByFullName("test-org/repo-b-" + suffix);
         assertThat(byFullName).hasSize(1);
-        assertThat(byFullName.get(0).getRepositoryId()).isEqualTo(1002L);
+        assertThat(byFullName.get(0).getRepositoryId()).isEqualTo(repositoryIdB);
 
         List<Repository> firstPage = repositoryMapper.selectPage(0, 1);
         assertThat(firstPage).hasSize(1);
 
-        Repository saved = repositoryMapper.selectByFullName("demo-org/repo-a").get(0);
+        Repository saved = repositoryMapper.selectByFullName("test-org/repo-a-" + suffix).get(0);
         assertThat(repositoryMapper.updateReadme(saved.getId(), "updated readme")).isEqualTo(1);
         assertThat(repositoryMapper.selectById(saved.getId()).getReadme()).isEqualTo("updated readme");
 

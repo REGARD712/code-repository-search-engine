@@ -5,8 +5,8 @@ spring:
   datasource:
     # 生产/开发数据库连接，优先读取环境变量 MYSQL_URL
     url: "${MYSQL_URL:jdbc:mysql://127.0.0.1:3306/search_engine?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}"
-    username: ${MYSQL_USERNAME:root}
-    password: ${MYSQL_PASSWORD:}
+    username: root
+    password: '1308670712.'
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 server:

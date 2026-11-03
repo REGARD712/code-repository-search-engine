@@ -10,8 +10,8 @@
 | Java | 17（Spring Boot 3 最低要求） |
 | Maven | 3.8.1（通过 Maven Wrapper 固定） |
 | Web | Spring Boot Starter Web |
-| 持久层 | MyBatis 3.5.x（mybatis-spring-boot-starter 3.0.3） |
-| 数据库 | MySQL 8.x，测试环境使用 H2 |
+| 持久层 | MyBatis-Plus 3.5.5（mybatis-plus-spring-boot3-starter） |
+| 数据库 | MySQL 8.x，开发与测试统一连接实际数据库 |
 | 工具 | Lombok |
 | 测试 | Spring Boot Starter Test / JUnit 5 |
 
@@ -36,8 +36,11 @@ backend/
 │   │   │   │   ├── exception/GiteeApiException.java  # 统一异常
 │   │   │   │   └── model/GiteeRepository.java        # Gitee 仓库统一模型
 │   │   │   └── repository/
-│   │   │       ├── entity/Repository.java            # 仓库表实体
-│   │   │       └── mapper/RepositoryMapper.java      # 仓库表 Mapper 接口
+│   │   │       ├── entity/Repository.java             # 仓库表实体
+│   │   │       ├── mapper/RepositoryMapper.java       # 仓库表 Mapper 接口
+│   │   │       └── service/
+│   │   │           ├── RepositorySyncService.java     # 仓库同步接口
+│   │   │           └── RepositorySyncServiceImpl.java # 单线程同步实现
 │   │   └── resources/
 │   │       ├── mapper/RepositoryMapper.xml           # 仓库表 Mapper SQL
 │   │       ├── db/schema.sql                         # MySQL 建表脚本
@@ -46,10 +49,8 @@ backend/
 │       ├── java/com/codeseek/
 │       │   ├── SearchEngineApplicationTests.java     # Gitee 实际接口调试用例
 │       │   ├── gitee/client/GiteeApiClientTest.java  # Gitee 客户端单元测试
-│       │   └── repository/mapper/RepositoryMapperTest.java
-│       └── resources/
-│           ├── application.yml                       # H2 测试数据源
-│           └── db/repository-h2.sql                  # H2 测试表结构
+│       │   ├── repository/mapper/RepositoryMapperTest.java
+│       │   └── repository/service/RepositorySyncServiceImplTest.java
 ├── mvnw
 ├── mvnw.cmd
 ├── pom.xml
@@ -160,7 +161,7 @@ mysql -u root -p < backend/src/main/resources/db/schema.sql
 
 ### Mapper
 
-[RepositoryMapper.java](src/main/java/com/codeseek/repository/mapper/RepositoryMapper.java) 提供以下操作，SQL 位于 [RepositoryMapper.xml](src/main/resources/mapper/RepositoryMapper.xml)：
+[RepositoryMapper.java](src/main/java/com/codeseek/repository/mapper/RepositoryMapper.java) 继承 MyBatis-Plus 的 `BaseMapper<Repository>`，并保留自定义 SQL 方法。SQL 位于 [RepositoryMapper.xml](src/main/resources/mapper/RepositoryMapper.xml)：
 
 | 方法 | 说明 |
 | --- | --- |
@@ -177,6 +178,45 @@ mysql -u root -p < backend/src/main/resources/db/schema.sql
 | `deleteById` | 按主键删除 |
 
 由于 `repositoryId` 和 `fullName` 在原始表结构中都是普通索引而非唯一索引，对应查询方法返回 `List<Repository>`，避免重复数据导致 `TooManyResultsException`。
+
+## 仓库同步服务
+
+[RepositorySyncService.java](src/main/java/com/codeseek/repository/service/RepositorySyncService.java) 只提供一个方法：
+
+```java
+List<Repository> syncRepositories(String username);
+```
+
+实现类 [RepositorySyncServiceImpl.java](src/main/java/com/codeseek/repository/service/RepositorySyncServiceImpl.java) 的执行流程：
+
+1. 调用 `giteeApi.listUserRepositories(username)` 查询用户仓库。
+2. 如果用户仓库为空，则把 `username` 当作组织名，调用 `giteeApi.listOrganizationRepositories(username)`。
+3. 使用普通 `for` 循环逐个仓库处理，保持单线程顺序执行。
+4. 从仓库全名中截取仓库名，拼接 `username/repoName` 调用 `getRepositoryReadme`。
+5. 将 README 文本填充到 `Repository.readme`，其余字段来自仓库列表结果。
+6. 调用 `repositoryMapper.batchInsert(repositories)` 一次性批量保存。
+7. 返回本次查询并保存的完整仓库列表；没有查询到仓库时返回空列表。
+
+使用示例：
+
+```java
+@Service
+public class RepositoryImportJob {
+
+    private final RepositorySyncService repositorySyncService;
+
+    public RepositoryImportJob(RepositorySyncService repositorySyncService) {
+        this.repositorySyncService = repositorySyncService;
+    }
+
+    public void execute() {
+        List<Repository> repositories = repositorySyncService.syncRepositories("whisper-void");
+        System.out.println("同步仓库数量：" + repositories.size());
+    }
+}
+```
+
+> 当前实现按需求使用单线程和一次性批量插入。仓库数量特别大时，后续可以将批量插入拆分为固定大小的批次，并配合事务控制。
 
 ## Gitee API 客户端
 
@@ -242,11 +282,20 @@ public class GiteeRepositorySyncService {
 
 ## 测试说明
 
+测试不再使用 H2，`RepositoryMapperTest` 和 `RepositorySyncServiceImplTest` 会直接连接 [application.yml](src/main/resources/application.yml) 配置的实际 MySQL 数据库。
+
+运行数据库相关测试前：
+
+1. 执行 [schema.sql](src/main/resources/db/schema.sql) 创建数据库和 `repository` 表。
+2. 配置正确的 `MYSQL_URL`、`MYSQL_USERNAME`、`MYSQL_PASSWORD`。
+3. 数据库相关测试类使用 `@Transactional`，每个测试方法结束后自动回滚，测试数据不会留在实际数据库中。
+
 测试包含：
 
 - 8 个 Gitee API 客户端单元测试，覆盖分页、字段映射、私有仓库过滤、README 解码、404 和 HTTP 错误处理。
-- 2 个基于 H2 的 `RepositoryMapper` 集成测试，覆盖新增、批量新增、查询、分页、更新和删除。
-- `SearchEngineApplicationTests` 中 4 个调用 Gitee 实际接口的调试用例，运行全量测试时需要能访问 Gitee；如只验证本地代码，可单独执行 `GiteeApiClientTest` 和 `RepositoryMapperTest`。
+- 2 个基于实际 MySQL 的 `RepositoryMapper` 集成测试，覆盖新增、批量新增、查询、分页、更新和删除。
+- 2 个基于实际 MySQL 的 `RepositorySyncServiceImpl` 测试，覆盖组织仓库兜底、README 填充和批量落库。
+- `SearchEngineApplicationTests` 中 4 个调用 Gitee 实际接口的调试用例，运行全量测试时需要能访问 Gitee；如只验证本地代码，可单独执行 `GiteeApiClientTest`、`RepositoryMapperTest` 和 `RepositorySyncServiceImplTest`。
 
 若运行环境限制 JVM 自附加（例如部分受限沙箱），Mockito 可能初始化失败，可追加：
 
@@ -258,7 +307,7 @@ public class GiteeRepositorySyncService {
 
 ## 后续建议
 
-1. 基于 `GiteeApi` 和 `RepositoryMapper` 增加仓库同步服务：拉取用户/组织仓库、补 README、落库并去重。
+1. 基于 `RepositorySyncService` 增加批量用户同步、定时任务和重复数据更新策略。
 2. 按 PRD 增加对外搜索接口、分页参数与统一响应体。
 3. 接入搜索索引（Elasticsearch / OpenSearch）与增量同步任务。
 4. 增加统一异常处理、参数校验、接口文档（SpringDoc）和日志规范。
