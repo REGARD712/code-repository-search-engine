@@ -1,6 +1,6 @@
 # Code Repository Search Engine — Backend
 
-代码仓库搜索引擎的后端项目，已搭好 Spring Boot 基础结构，封装了 Gitee 用户、仓库和 README 查询接口，并生成了仓库表的实体与 MyBatis Mapper；暂不包含业务 Controller 和前端联调代码。
+代码仓库搜索引擎的后端项目，已搭好 Spring Boot 基础结构，封装了 Gitee 用户、仓库和 README 查询接口，生成了仓库表实体与 MyBatis Mapper，并实现了基于结巴搜索模式分词的本地倒排索引；暂不包含业务 Controller 和前端联调代码。
 
 ## 技术栈
 
@@ -12,6 +12,7 @@
 | Web | Spring Boot Starter Web |
 | 持久层 | MyBatis-Plus 3.5.5（mybatis-plus-spring-boot3-starter） |
 | 数据库 | MySQL 8.x，开发与测试统一连接实际数据库 |
+| 分词 | jieba-analysis 1.0.2，搜索引擎模式 |
 | 工具 | Lombok |
 | 测试 | Spring Boot Starter Test / JUnit 5 |
 
@@ -35,12 +36,20 @@ backend/
 │   │   │   │   ├── config/GiteeApiProperties.java    # gitee.api 配置
 │   │   │   │   ├── exception/GiteeApiException.java  # 统一异常
 │   │   │   │   └── model/GiteeRepository.java        # Gitee 仓库统一模型
-│   │   │   └── repository/
-│   │   │       ├── entity/Repository.java             # 仓库表实体
-│   │   │       ├── mapper/RepositoryMapper.java       # 仓库表 Mapper 接口
-│   │   │       └── service/
-│   │   │           ├── RepositorySyncService.java     # 仓库同步接口
-│   │   │           └── RepositorySyncServiceImpl.java # 单线程同步实现
+│   │   │   ├── repository/
+│   │   │   │   ├── entity/Repository.java             # 仓库表实体
+│   │   │   │   ├── mapper/RepositoryMapper.java       # 仓库表 Mapper 接口
+│   │   │   │   └── service/
+│   │   │   │       ├── RepositorySyncService.java     # 仓库同步接口
+│   │   │   │       └── RepositorySyncServiceImpl.java # 单线程同步实现
+│   │   │   └── index/                                 # 倒排索引模块
+│   │   │       ├── builder/RepositoryIndexBuilder.java
+│   │   │       ├── config/RepositoryIndexProperties.java
+│   │   │       ├── model/                             # 文档、倒排列表、检索结果
+│   │   │       ├── search/MultiWayIndexSearcher.java
+│   │   │       ├── segment/JiebaTextSegmenter.java
+│   │   │       ├── service/RepositoryIndexService.java
+│   │   │       └── store/IndexFileStore.java
 │   │   └── resources/
 │   │       ├── mapper/RepositoryMapper.xml           # 仓库表 Mapper SQL
 │   │       ├── db/schema.sql                         # MySQL 建表脚本
@@ -50,7 +59,11 @@ backend/
 │       │   ├── SearchEngineApplicationTests.java     # Gitee 实际接口调试用例
 │       │   ├── gitee/client/GiteeApiClientTest.java  # Gitee 客户端单元测试
 │       │   ├── repository/mapper/RepositoryMapperTest.java
-│       │   └── repository/service/RepositorySyncServiceImplTest.java
+│       │   ├── repository/service/RepositorySyncServiceImplTest.java
+│       │   └── index/                               # 倒排索引单元测试
+│       │       ├── builder/RepositoryIndexBuilderTest.java
+│       │       ├── search/MultiWayIndexSearcherTest.java
+│       │       └── store/IndexFileStoreTest.java
 ├── mvnw
 ├── mvnw.cmd
 ├── pom.xml
@@ -116,6 +129,10 @@ spring:
 
 mybatis:
   mapper-locations: classpath*:mapper/**/*.xml
+
+repository:
+  index:
+    path: ./data/repository-index.bin
 
 gitee:
   api:
@@ -280,9 +297,67 @@ public class GiteeRepositorySyncService {
 }
 ```
 
+## 倒排索引
+
+### 构建
+
+[RepositoryIndexService.java](src/main/java/com/codeseek/index/service/RepositoryIndexService.java) 提供索引构建和检索能力。
+
+构建流程：
+
+1. 从 `repository` 表读取全部仓库。
+2. 以 `repository.id` 作为文档 ID，构建 `id -> RepositoryDocument` 文档列表。
+3. 对 README 做文本归一化：去掉 HTML 标签、标点、符号等特殊字符，只保留中文、字母和数字，并统一小写。
+4. 使用 `JiebaSegmenter.SegMode.SEARCH` 搜索引擎模式分词。
+5. 统计每个词在每个文档中的词频，生成 `词项 -> [(文档 ID, 词频)]` 倒排表。
+6. 倒排表中的文档 ID 升序排列，供查询时多路归并使用。
+7. 保存为二进制索引文件，并替换内存中的索引快照。
+
+调用示例：
+
+```java
+@Autowired
+private RepositoryIndexService repositoryIndexService;
+
+IndexBuildResult result = repositoryIndexService.rebuildIndex();
+List<RepositorySearchResult> results = repositoryIndexService.search("权限管理", 20);
+```
+
+### 检索与多路归并
+
+查询词同样先执行特殊字符清洗，再使用结巴搜索引擎模式分词。
+[MultiWayIndexSearcher.java](src/main/java/com/codeseek/index/search/MultiWayIndexSearcher.java) 为每个查询词建立一路有序倒排列表游标，使用小根堆按文档 ID 进行多路归并：
+
+- 同一个文档 ID 的多个查询词词频一次性合并；
+- 以词频总和作为主要排序依据；
+- 词频相同时，命中词数多的优先；
+- 仍相同时按文档 ID 升序，保证结果稳定。
+
+当前采用“命中任意查询词即可返回”的策略，适合搜索召回；后续如需严格 AND 或 BM25 打分，可以在归并层增加过滤和权重。
+
+### 索引文件加载优化
+
+[IndexFileStore.java](src/main/java/com/codeseek/index/store/IndexFileStore.java) 使用自定义紧凑二进制格式，加载时：
+
+- 只做一次顺序读取，避免 JSON / Java 序列化解析；
+- 使用 1MB `BufferedInputStream` 减少系统调用；
+- 从文件头读取文档数、词项数，并按预期容量预初始化 `HashMap`；
+- 倒排项使用 `long[]` 和 `int[]` 原始数组，不为每个文档词频创建对象；
+- 写入临时文件后原子替换目标文件，避免加载到不完整索引。
+
+索引文件默认路径：
+
+```yaml
+repository:
+  index:
+    path: ./data/repository-index.bin
+```
+
+索引文件属于运行时数据，已加入 `.gitignore`。应用启动时会自动尝试加载已有索引；索引不存在时使用空索引，之后可通过 `rebuildIndex()` 重建。
+
 ## 测试说明
 
-测试不再使用 H2，`RepositoryMapperTest` 和 `RepositorySyncServiceImplTest` 会直接连接 [application.yml](src/main/resources/application.yml) 配置的实际 MySQL 数据库。
+数据库相关测试直接连接 [application.yml](src/main/resources/application.yml) 配置的实际 MySQL 数据库。
 
 运行数据库相关测试前：
 
@@ -295,7 +370,8 @@ public class GiteeRepositorySyncService {
 - 8 个 Gitee API 客户端单元测试，覆盖分页、字段映射、私有仓库过滤、README 解码、404 和 HTTP 错误处理。
 - 2 个基于实际 MySQL 的 `RepositoryMapper` 集成测试，覆盖新增、批量新增、查询、分页、更新和删除。
 - 2 个基于实际 MySQL 的 `RepositorySyncServiceImpl` 测试，覆盖组织仓库兜底、README 填充和批量落库。
-- `SearchEngineApplicationTests` 中 4 个调用 Gitee 实际接口的调试用例，运行全量测试时需要能访问 Gitee；如只验证本地代码，可单独执行 `GiteeApiClientTest`、`RepositoryMapperTest` 和 `RepositorySyncServiceImplTest`。
+- 7 个倒排索引单元测试，覆盖分词构建、多路归并排序、limit、空结果、索引文件保存和加载。
+- `SearchEngineApplicationTests` 中 4 个调用 Gitee 实际接口的调试用例，运行全量测试时需要能访问 Gitee；如只验证本地代码，可单独执行 `GiteeApiClientTest`、`RepositoryMapperTest`、`RepositorySyncServiceImplTest` 和倒排索引测试。
 
 若运行环境限制 JVM 自附加（例如部分受限沙箱），Mockito 可能初始化失败，可追加：
 
@@ -309,7 +385,7 @@ public class GiteeRepositorySyncService {
 
 1. 基于 `RepositorySyncService` 增加批量用户同步、定时任务和重复数据更新策略。
 2. 按 PRD 增加对外搜索接口、分页参数与统一响应体。
-3. 接入搜索索引（Elasticsearch / OpenSearch）与增量同步任务。
+3. 将本地倒排索引扩展为分布式索引（Elasticsearch / OpenSearch），并增加增量重建能力。
 4. 增加统一异常处理、参数校验、接口文档（SpringDoc）和日志规范。
 5. 将 `ui/` 静态原型接入真实接口，或部署到 `src/main/resources/static`。
 6. 根据团队规范补充 Checkstyle、Spotless、CI 和代码覆盖率配置。

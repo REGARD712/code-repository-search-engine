@@ -5,8 +5,8 @@ spring:
   datasource:
     # 生产/开发数据库连接，优先读取环境变量 MYSQL_URL
     url: "${MYSQL_URL:jdbc:mysql://127.0.0.1:3306/search_engine?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}"
-    username: root
-    password: '1308670712.'
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 server:
@@ -15,6 +15,11 @@ server:
 mybatis:
   # Mapper XML 文件位置
   mapper-locations: classpath*:mapper/**/*.xml
+
+repository:
+  index:
+    # 倒排索引二进制文件位置，首次重建时自动创建目录
+    path: ./data/repository-index.bin
 
 gitee:
   api:

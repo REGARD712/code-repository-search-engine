@@ -41,6 +41,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- 结巴分词，用于 README 和查询词的搜索引擎模式分词 -->
+        <dependency>
+            <groupId>com.huaban</groupId>
+            <artifactId>jieba-analysis</artifactId>
+            <version>1.0.2</version>
+        </dependency>
+
         <!-- Lombok 用于减少实体类的样板代码 -->
         <dependency>
             <groupId>org.projectlombok</groupId>
