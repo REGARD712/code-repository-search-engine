@@ -1,6 +1,7 @@
 package com.codeseek.index.service;
 
 import com.codeseek.index.model.IndexBuildResult;
+import com.codeseek.index.model.RepositoryInvertedIndex;
 import com.codeseek.index.model.RepositorySearchResult;
 
 import java.util.List;
@@ -28,6 +29,8 @@ public interface RepositoryIndexService {
 
     /**
      * 从磁盘加载倒排索引。
+     *
+     * @return
      */
-    void loadIndex();
+    RepositoryInvertedIndex loadIndex();
 }

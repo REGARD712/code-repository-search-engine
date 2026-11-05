@@ -117,13 +117,15 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
 
     /**
      * {@inheritDoc}
+     *
+     * @return
      */
     @Override
-    public void loadIndex() {
+    public RepositoryInvertedIndex loadIndex() {
         if (!Files.exists(properties.getPath())) {
             LOGGER.info("倒排索引文件不存在，使用空索引：{}", properties.getPath());
             currentIndex.set(RepositoryInvertedIndex.empty());
-            return;
+            return null;
         }
 
         try {
@@ -134,5 +136,6 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
         } catch (IOException exception) {
             throw new IllegalStateException("倒排索引文件加载失败：" + properties.getPath(), exception);
         }
+        return null;
     }
 }
