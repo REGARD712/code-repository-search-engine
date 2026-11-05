@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# 可选：安装后构建 FAISS IndexFlatIP 索引；未安装时使用 numpy 余弦矩阵
+faiss-cpu==1.15.1

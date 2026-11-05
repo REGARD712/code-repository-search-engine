@@ -3,3 +3,10 @@
 
 # Used by previous versions of JEnv
 .jenv-version
+
+# IDE 配置可能包含本地数据库密码，不应提交
+.idea/
+*.iml
+
+# 本地环境变量
+.env
