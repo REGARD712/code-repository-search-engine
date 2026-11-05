@@ -30,7 +30,7 @@ public interface RepositoryIndexService {
     /**
      * 从磁盘加载倒排索引。
      *
-     * @return
+     * @return 加载后的倒排索引；索引文件不存在时返回空索引
      */
     RepositoryInvertedIndex loadIndex();
 }

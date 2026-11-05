@@ -29,6 +29,9 @@ backend/
 │   ├── main/
 │   │   ├── java/com/codeseek/
 │   │   │   ├── SearchEngineApplication.java          # 启动类
+│   │   │   ├── controller/
+│   │   │   │   ├── SearchController.java              # GET /search
+│   │   │   │   └── SearchRequest.java                 # 查询请求体
 │   │   │   ├── gitee/
 │   │   │   │   ├── api/GiteeApi.java                 # 面向业务层的接口契约
 │   │   │   │   ├── client/GiteeApiClient.java        # RestClient 实现、分页与字段映射
@@ -57,6 +60,7 @@ backend/
 │   └── test/
 │       ├── java/com/codeseek/
 │       │   ├── SearchEngineApplicationTests.java     # Gitee 实际接口调试用例
+│       │   ├── controller/SearchControllerTest.java # 搜索接口测试
 │       │   ├── gitee/client/GiteeApiClientTest.java  # Gitee 客户端单元测试
 │       │   ├── repository/mapper/RepositoryMapperTest.java
 │       │   ├── repository/service/RepositorySyncServiceImplTest.java
@@ -99,7 +103,7 @@ Java version: 17.x
 # 进入后端目录
 cd backend
 
-# 启动开发服务（默认 8080 端口）
+# 启动开发服务（默认 80 端口）
 .\mvnw.cmd spring-boot:run
 
 # 运行测试
@@ -111,7 +115,7 @@ cd backend
 
 macOS / Linux 将 `.\mvnw.cmd` 替换为 `./mvnw`。
 
-启动后可访问 `http://localhost:8080`。当前没有 Controller，因此根路径返回 **404** 属于正常现象；后续添加接口后即可访问。
+启动后可访问 `http://localhost:80`，搜索接口为 `GET /search`。
 
 ## 配置
 
@@ -354,6 +358,105 @@ repository:
 ```
 
 索引文件属于运行时数据，已加入 `.gitignore`。应用启动时会自动尝试加载已有索引；索引不存在时使用空索引，之后可通过 `rebuildIndex()` 重建。
+
+### IDEA 启动时索引路径问题
+
+IDEA 的 Run Configuration 默认工作目录通常是项目根目录：
+
+```text
+code-repository-search-engine/
+```
+
+而 `./data/repository-index.bin` 会解析成：
+
+```text
+code-repository-search-engine/data/repository-index.bin
+```
+
+实际索引文件在：
+
+```text
+code-repository-search-engine/backend/data/repository-index.bin
+```
+
+因此旧版本会提示「倒排索引文件不存在」。现在已增加兼容逻辑：如果当前目录找不到索引，会继续尝试 `backend/data/repository-index.bin`。
+
+推荐仍然把 IDEA Run Configuration 的 **Working directory** 设置为：
+
+```text
+$PROJECT_DIR$/backend
+```
+
+也可以通过环境变量显式指定绝对路径：
+
+```powershell
+$env:REPOSITORY_INDEX_PATH = "C:\JAVA\项目\基于 AI 工具的代码仓库搜索引擎\code-repository-search-engine\backend\data\repository-index.bin"
+```
+
+或在 IDEA 的 Environment variables 中添加同名变量。配置项已支持：
+
+```yaml
+repository:
+  index:
+    path: ${REPOSITORY_INDEX_PATH:./data/repository-index.bin}
+```
+
+## 搜索 HTTP 接口
+
+[SearchController.java](src/main/java/com/codeseek/controller/SearchController.java) 提供：
+
+```text
+GET /search
+```
+
+支持 JSON 请求体：
+
+```http
+GET /search
+Content-Type: application/json
+
+{"query":"大模型"}
+```
+
+也支持查询参数，便于浏览器和简单客户端调试：
+
+```text
+GET /search?query=大模型
+```
+
+响应为 `Repository` 数组，最多 1000 条：
+
+```json
+[
+  {
+    "id": 10000025,
+    "fullName": "rae-gard712/large-model",
+    "htmlUrl": "https://gitee.com/rae-gard712/large-model.git",
+    "readme": "# largeModel\n...",
+    "repositoryId": 50953942
+  }
+]
+```
+
+实现说明：
+
+- 应用启动时 [RepositoryIndexServiceImpl.java](src/main/java/com/codeseek/index/service/RepositoryIndexServiceImpl.java) 的 `@PostConstruct` 会调用 `IndexFileStore.load` 加载 `./data/repository-index.bin`。
+- 查询关键词传给 `RepositoryIndexService.search`，倒排索引返回排序后的仓库 ID。
+- 控制器使用 `RepositoryMapper.selectByIds` 一次性批量补齐 `readme`、`repositoryId` 等完整字段。
+- 最终结果保持倒排索引的相关性顺序，并限制最多 1000 条。
+- 查询为空或没有匹配结果时返回 `[]`。
+- PowerShell 的 `Invoke-RestMethod` 不支持 GET 请求体，调试时可使用 `?query=` 形式，或使用 curl / Postman 发送 JSON body。
+
+启动示例：
+
+```powershell
+cd backend
+$env:MYSQL_USERNAME = "root"
+$env:MYSQL_PASSWORD = "你的 MySQL root 密码"
+
+.\mvnw.cmd -DskipTests package
+& "$env:JAVA_HOME\bin\java.exe" -jar target\code-repository-search-engine-0.0.1-SNAPSHOT.jar
+```
 
 ## 测试说明
 

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -87,15 +88,16 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
     public IndexBuildResult rebuildIndex() {
         List<Repository> repositories = repositoryMapper.selectAll();
         RepositoryInvertedIndex rebuiltIndex = indexBuilder.build(repositories);
+        Path indexPath = resolveIndexPath();
 
         try {
-            indexFileStore.save(properties.getPath(), rebuiltIndex);
+            indexFileStore.save(indexPath, rebuiltIndex);
         } catch (IOException exception) {
-            throw new IllegalStateException("倒排索引文件写入失败：" + properties.getPath(), exception);
+            throw new IllegalStateException("倒排索引文件写入失败：" + indexPath, exception);
         }
 
         currentIndex.set(rebuiltIndex);
-        LOGGER.info("倒排索引重建完成：{}", properties.getPath());
+        LOGGER.info("倒排索引重建完成：{}", indexPath);
         return new IndexBuildResult(
                 rebuiltIndex.documentCount(),
                 rebuiltIndex.termCount(),
@@ -122,20 +124,52 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
      */
     @Override
     public RepositoryInvertedIndex loadIndex() {
-        if (!Files.exists(properties.getPath())) {
-            LOGGER.info("倒排索引文件不存在，使用空索引：{}", properties.getPath());
-            currentIndex.set(RepositoryInvertedIndex.empty());
-            return null;
+        Path indexPath = resolveIndexPath();
+        if (!Files.exists(indexPath)) {
+            LOGGER.info("倒排索引文件不存在，使用空索引：{}", indexPath);
+            RepositoryInvertedIndex emptyIndex = RepositoryInvertedIndex.empty();
+            currentIndex.set(emptyIndex);
+            return emptyIndex;
         }
 
         try {
-            RepositoryInvertedIndex loadedIndex = indexFileStore.load(properties.getPath());
+            RepositoryInvertedIndex loadedIndex = indexFileStore.load(indexPath);
             currentIndex.set(loadedIndex);
-            LOGGER.info("倒排索引加载完成：文档数={}，词项数={}，倒排项数={}",
-                    loadedIndex.documentCount(), loadedIndex.termCount(), loadedIndex.postingCount());
+            LOGGER.info("倒排索引加载完成：{}，文档数={}，词项数={}，倒排项数={}",
+                    indexPath, loadedIndex.documentCount(), loadedIndex.termCount(), loadedIndex.postingCount());
+            return loadedIndex;
         } catch (IOException exception) {
-            throw new IllegalStateException("倒排索引文件加载失败：" + properties.getPath(), exception);
+            throw new IllegalStateException("倒排索引文件加载失败：" + indexPath, exception);
         }
-        return null;
+    }
+
+    /**
+     * 解析实际索引路径，兼容 IDEA 将工作目录设为项目根目录的情况。
+     *
+     * <p>命令行从 backend 目录启动时，{@code ./data} 指向 backend/data；
+     * IDEA 默认可能从项目根目录启动，此时配置的相对路径会落到
+     * {@code 项目根/data}。如果该文件不存在，则尝试
+     * {@code 项目根/backend/data}，避免误判索引文件缺失。</p>
+     *
+     * @return 实际使用的索引路径
+     */
+    private Path resolveIndexPath() {
+        Path configuredPath = properties.getPath();
+        if (configuredPath == null || configuredPath.isAbsolute()) {
+            return configuredPath;
+        }
+        if (Files.exists(configuredPath)) {
+            return configuredPath;
+        }
+
+        // 兼容从项目根目录启动：把相对路径再放到 backend 模块目录下查找。
+        Path backendDirectory = Path.of("backend");
+        Path backendRelativePath = backendDirectory.resolve(configuredPath).normalize();
+        if (Files.exists(backendRelativePath)
+                || (Files.isDirectory(backendDirectory) && !Files.isDirectory(configuredPath.getParent()))) {
+            LOGGER.info("使用 backend 模块相对路径解析索引：{}", backendRelativePath);
+            return backendRelativePath;
+        }
+        return configuredPath;
     }
 }

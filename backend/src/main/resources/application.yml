@@ -10,7 +10,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 server:
-  port: 8080
+  port: 80
 
 mybatis:
   # Mapper XML 文件位置
@@ -18,8 +18,8 @@ mybatis:
 
 repository:
   index:
-    # 倒排索引二进制文件位置，首次重建时自动创建目录
-    path: ./data/repository-index.bin
+    # 倒排索引二进制文件位置，可用 REPOSITORY_INDEX_PATH 环境变量覆盖
+    path: ${REPOSITORY_INDEX_PATH:./data/repository-index.bin}
 
 gitee:
   api:

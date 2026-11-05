@@ -65,6 +65,17 @@ public interface RepositoryMapper extends BaseMapper<Repository> {
     List<Repository> selectByFullName(@Param("fullName") String fullName);
 
     /**
+     * 根据数据库主键批量查询仓库。
+     *
+     * <p>表字段使用驼峰命名，自定义 XML 可以显式复用 resultMap，
+     * 避免 MyBatis-Plus 默认下划线转驼峰规则生成错误的列名。</p>
+     *
+     * @param ids 数据库主键列表，不能为空
+     * @return 仓库列表
+     */
+    List<Repository> selectByIds(@Param("ids") List<Long> ids);
+
+    /**
      * 查询全部仓库，按主键升序排列。
      *
      * @return 仓库列表
