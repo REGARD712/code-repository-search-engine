@@ -26,7 +26,7 @@ def parse_args() -> argparse.Namespace:
     """解析查询参数。"""
     parser = argparse.ArgumentParser(description="查询仓库 README 向量索引")
     parser.add_argument("--query", required=True, help="查询文本")
-    parser.add_argument("--top-k", type=int, default=10, help="返回条数")
+    parser.add_argument("--top-k", type=int, default=50, help="返回条数")
     parser.add_argument(
         "--index-dir",
         default=os.getenv("VECTOR_INDEX_DIR", r"C:\JAVA\search_engine"),
