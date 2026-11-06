@@ -37,3 +37,11 @@ gitee:
     max-pages: 1000
     connect-timeout: 5s
     read-timeout: 30s
+
+logging:
+  file:
+    # 运行日志目录，可用 LOG_PATH 环境变量覆盖
+    path: ${LOG_PATH:./logs}
+  level:
+    root: INFO
+    com.codeseek: INFO

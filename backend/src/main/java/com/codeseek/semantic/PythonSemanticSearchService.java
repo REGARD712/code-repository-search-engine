@@ -93,6 +93,7 @@ public class PythonSemanticSearchService implements SemanticSearchService {
             return List.of();
         }
 
+        long startedAt = System.nanoTime();
         try {
             SemanticSearchResponse response = restClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -104,6 +105,8 @@ public class PythonSemanticSearchService implements SemanticSearchService {
                     .body(SemanticSearchResponse.class);
 
             if (response == null || response.results() == null) {
+                LOGGER.info("语义检索完成：keyword='{}'，返回ID数=0，耗时={}ms",
+                        keyword, elapsedMs(startedAt));
                 return List.of();
             }
 
@@ -112,13 +115,26 @@ public class PythonSemanticSearchService implements SemanticSearchService {
                     .map(item -> item.id())
                     .filter(Objects::nonNull)
                     .toList();
-            LOGGER.debug("语义检索完成：关键词={}，返回ID数={}", keyword, ids.size());
+            LOGGER.info("语义检索完成：keyword='{}'，返回ID数={}，耗时={}ms",
+                    keyword, ids.size(), elapsedMs(startedAt));
             return ids;
         } catch (RestClientException exception) {
+            LOGGER.warn("语义检索调用失败：keyword='{}'，服务地址={}，耗时={}ms，原因={}",
+                    keyword, serviceBaseUrl, elapsedMs(startedAt), exception.getMessage());
             throw new SemanticSearchException(
                     "调用 Python 语义检索服务失败：" + serviceBaseUrl,
                     exception
             );
         }
+    }
+
+    /**
+     * 计算从开始到当前的毫秒数。
+     *
+     * @param startedAt 开始时间，单位纳秒
+     * @return 耗时毫秒数
+     */
+    private long elapsedMs(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000;
     }
 }

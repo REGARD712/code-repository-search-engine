@@ -4,6 +4,8 @@ import com.codeseek.index.model.RepositorySearchResult;
 import com.codeseek.index.service.RepositoryIndexService;
 import com.codeseek.repository.entity.Repository;
 import com.codeseek.repository.mapper.RepositoryMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,6 +24,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/search")
 public class SearchController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SearchController.class);
 
     /**
      * 单次请求最多返回条数。
@@ -64,14 +68,18 @@ public class SearchController {
             @RequestBody(required = false) SearchRequest request,
             @RequestParam(name = "query", required = false) String query
     ) {
+        long startedAt = System.nanoTime();
         String keyword = resolveKeyword(request, query);
         if (!StringUtils.hasText(keyword)) {
+            LOGGER.info("搜索请求忽略：查询词为空");
             return List.of();
         }
 
         List<RepositorySearchResult> rankedResults =
                 repositoryIndexService.search(keyword.trim(), MAX_RESULT_COUNT);
         if (rankedResults.isEmpty()) {
+            LOGGER.info("搜索完成：query='{}'，混合检索无结果，耗时={}ms",
+                    keyword, elapsedMs(startedAt));
             return List.of();
         }
 
@@ -80,10 +88,23 @@ public class SearchController {
                 .toList();
 
         // 一次批量查询补齐完整仓库字段，SQL 内部按传入 ID 顺序返回。
-        return repositoryMapper.selectByIdsInOrder(repositoryIds)
+        List<Repository> repositories = repositoryMapper.selectByIdsInOrder(repositoryIds)
                 .stream()
                 .limit(MAX_RESULT_COUNT)
                 .toList();
+        LOGGER.info("搜索完成：query='{}'，候选={}，返回={}，耗时={}ms",
+                keyword, rankedResults.size(), repositories.size(), elapsedMs(startedAt));
+        return repositories;
+    }
+
+    /**
+     * 计算从开始到当前的毫秒数。
+     *
+     * @param startedAt 开始时间，单位纳秒
+     * @return 耗时毫秒数
+     */
+    private long elapsedMs(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000;
     }
 
     /**

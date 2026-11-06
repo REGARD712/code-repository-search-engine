@@ -130,8 +130,10 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
      */
     @Override
     public List<RepositorySearchResult> search(String keyword, int limit) {
+        long startedAt = System.nanoTime();
         List<String> queryTerms = textSegmenter.segment(keyword);
         if (queryTerms.isEmpty()) {
+            LOGGER.info("混合检索跳过：query='{}'，分词结果为空", keyword);
             return List.of();
         }
 
@@ -139,6 +141,8 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
         List<RepositorySearchResult> invertedResults =
                 indexSearcher.search(currentIndex.get(), queryTerms, MAX_SEARCH_LIMIT);
         if (invertedResults.isEmpty()) {
+            LOGGER.info("混合检索完成：query='{}'，倒排候选=0，返回=0，耗时={}ms",
+                    keyword, elapsedMs(startedAt));
             return List.of();
         }
 
@@ -147,7 +151,8 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
             semanticIds = semanticSearchService.searchIds(keyword, MAX_SEARCH_LIMIT);
         } catch (SemanticSearchException exception) {
             // 语义服务不可用时降级为倒排结果，避免整个搜索接口不可用。
-            LOGGER.warn("语义检索不可用，降级为倒排索引结果：{}", exception.getMessage());
+            LOGGER.warn("语义检索不可用，降级为倒排索引结果：query='{}'，倒排候选={}，原因={}",
+                    keyword, invertedResults.size(), exception.getMessage());
             return invertedResults.stream()
                     .limit(safeLimit)
                     .toList();
@@ -161,12 +166,26 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
                         (left, right) -> left
                 ));
 
-        return semanticIds.stream()
+        List<RepositorySearchResult> intersection = semanticIds.stream()
                 .distinct()
                 .map(invertedById::get)
                 .filter(Objects::nonNull)
                 .limit(safeLimit)
                 .toList();
+        LOGGER.info("混合检索完成：query='{}'，倒排候选={}，语义候选={}，交集返回={}，耗时={}ms",
+                keyword, invertedResults.size(), semanticIds.size(), intersection.size(),
+                elapsedMs(startedAt));
+        return intersection;
+    }
+
+    /**
+     * 计算从开始到当前的毫秒数。
+     *
+     * @param startedAt 开始时间，单位纳秒
+     * @return 耗时毫秒数
+     */
+    private long elapsedMs(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000;
     }
 
     /**

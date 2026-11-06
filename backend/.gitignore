@@ -1,5 +1,6 @@
 target/
 data/
+logs/
 !.mvn/wrapper/maven-wrapper.jar
 
 .idea/

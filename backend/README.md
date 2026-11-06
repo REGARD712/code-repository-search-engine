@@ -34,6 +34,7 @@ backend/
 │   │   │   ├── controller/
 │   │   │   │   ├── SearchController.java              # GET /search
 │   │   │   │   └── SearchRequest.java                 # 查询请求体
+│   │   │   ├── config/RequestLoggingFilter.java       # HTTP 请求运行日志
 │   │   │   ├── semantic/                              # AI 语义检索客户端
 │   │   │   │   ├── SemanticSearchService.java
 │   │   │   │   ├── PythonSemanticSearchService.java
@@ -63,6 +64,7 @@ backend/
 │   │   └── resources/
 │   │       ├── mapper/RepositoryMapper.xml           # 仓库表 Mapper SQL
 │   │       ├── db/schema.sql                         # MySQL 建表脚本
+│   │       ├── logback-spring.xml                    # 控制台与滚动文件日志
 │   │       └── application.yml
 │   └── test/
 │       ├── java/com/codeseek/
@@ -167,6 +169,13 @@ gitee:
     max-pages: 1000
     connect-timeout: 5s
     read-timeout: 30s
+
+logging:
+  file:
+    path: ${LOG_PATH:./logs}
+  level:
+    root: INFO
+    com.codeseek: INFO
 ```
 
 数据库账号密码通过环境变量提供：
@@ -177,6 +186,39 @@ $env:MYSQL_PASSWORD = "你的密码"
 ```
 
 `MYSQL_URL` 当前未作为配置占位符使用；如需切换数据库地址，请修改 `application.yml` 中的 `spring.datasource.url`。
+
+## 运行日志
+
+项目使用 [logback-spring.xml](src/main/resources/log/logback-spring.xml) 同时输出控制台日志和滚动文件日志。
+
+默认日志文件：
+
+```text
+backend/logs/backend.log
+```
+
+滚动规则：
+
+- 单文件最大 50MB；
+- 按天和文件大小切分；
+- 历史文件保留 30 天；
+- 日志总量上限 2GB；
+- 历史文件使用 `.log.gz` 压缩。
+
+日志目录可通过 [application.yml](src/main/resources/application.yml) 或环境变量修改：
+
+```powershell
+$env:LOG_PATH = "C:\JAVA\logs\code-repository-search-engine"
+```
+
+运行日志包含：
+
+- HTTP 请求方法、路径、查询参数、响应状态、耗时和客户端 IP；
+- 搜索关键词、倒排候选数、语义候选数、交集返回数和搜索耗时；
+- Python 语义服务调用结果、失败原因和降级日志；
+- 倒排索引加载、重建和启动信息。
+
+请求过滤器 [RequestLoggingFilter.java](src/main/java/com/codeseek/config/RequestLoggingFilter.java) 不记录请求体，避免 README 等大文本进入日志；查询参数超过 500 个字符会被截断。
 
 ## 仓库表实体与 Mapper
 
