@@ -66,7 +66,6 @@ backend/
 │   │       ├── mapper/RepositoryMapper.xml           # 仓库表 Mapper SQL
 │   │       ├── db/schema.sql                         # MySQL 建表脚本
 │   │       ├── logback-spring.xml                    # 控制台与滚动文件日志
-│   │       ├── stopwords.txt                         # 中英文停用词
 │   │       └── application.yml
 │   └── test/
 │       ├── java/com/codeseek/
@@ -382,7 +381,7 @@ public class GiteeRepositorySyncService {
 2. 以 `repository.id` 作为文档 ID，构建 `id -> RepositoryDocument` 文档列表。
 3. 对 README 做文本归一化：去掉 HTML 标签、标点、符号等特殊字符，只保留中文、字母和数字，并统一小写。
 4. 使用 `JiebaSegmenter.SegMode.SEARCH` 搜索引擎模式分词。
-5. 在分词完成后从 `classpath:stopwords.txt` 加载停用词并过滤（英文如 the、and、for、this；中文如 的、了、一个、因为、进行），避免虚词进入倒排索引。
+5. 在分词完成后加载 `C:\JAVA\search_engine\stopwords.txt` 并过滤中英文停用词（英文如 the、and、for、this；中文如 的、了、一个、因为、进行），避免虚词进入倒排索引。
 6. 统计每个词在每个文档中的词频，生成 `词项 -> [(文档 ID, 词频)]` 倒排表。
 7. 倒排表中的文档 ID 升序排列，供查询时多路归并使用。
 8. 保存为二进制索引文件，并替换内存中的索引快照。
@@ -411,9 +410,33 @@ List<RepositorySearchResult> results = repositoryIndexService.search("权限管�
 
 混合检索最终要求同时命中倒排结果和语义结果，交集之外的仓库不会返回。
 
+### 中文子串回退
+
+结巴搜索引擎模式会把“搜索引擎”保留为一个完整词项：
+
+```text
+代码仓库搜索引擎 -> [代码, 仓库, 搜索引擎]
+引擎             -> [引擎]
+```
+
+因此索引中只有 `搜索引擎`，直接用 `引擎` 查询时精确匹配不到。`RepositoryIndexServiceImpl` 增加了中文子串回退：
+
+- 精确词项存在时优先使用精确词项；
+- 精确词项不存在时，对长度至少为 2 的中文查询词，查找包含该词的索引词；
+- 例如 `引擎` 会扩展到 `搜索引擎`；
+- 每个查询词最多扩展 20 个索引词，避免子串扫描产生过多候选。
+
+该回退只影响查询阶段，不需要重新构建倒排索引。
+
 ### 停用词维护
 
-停用词集中维护在 [stopwords.txt](src/main/resources/stopwords.txt)，不再写死在 Java 代码中。
+停用词集中维护在外部文件：
+
+```text
+C:\JAVA\search_engine\stopwords.txt
+```
+
+不再写死在 Java 代码中。
 
 文件格式：
 
@@ -422,15 +445,23 @@ List<RepositorySearchResult> results = repositoryIndexService.search("权限管�
 - 空行会被忽略；
 - 以 `#` 开头的行是注释，不参与过滤。
 
-[StopWordFilter.java](src/main/java/com/codeseek/index/segment/StopWordFilter.java) 在类加载时通过 classpath 读取一次：
+[StopWordFilter.java](src/main/java/com/codeseek/index/segment/StopWordFilter.java) 在类加载时读取一次，路径优先级：
 
-```text
-/stopwords.txt
+1. JVM 参数 `-Dstopwords.path=...`
+2. 环境变量 `STOPWORDS_PATH`
+3. 默认路径 `C:\JAVA\search_engine\stopwords.txt`
+
+示例：
+
+```powershell
+$env:STOPWORDS_PATH = "D:\data\stopwords.txt"
 ```
+
+如果外部文件不存在，测试环境会回退到 classpath 下的 `/stopwords.txt`；正式环境应保证外部文件存在。
 
 修改停用词后需要：
 
-1. 重新打包或重启服务；
+1. 重启 Java 服务；
 2. 重新执行 `RepositoryIndexService.rebuildIndex()`，让已有倒排索引使用新的停用词集合。
 
 ### 混合检索
@@ -599,6 +630,7 @@ $env:MYSQL_PASSWORD = "你的 MySQL root 密码"
 - 2 个 `RepositoryIndexServiceTest` 测试，覆盖倒排索引重建和检索。
 - 6 个分词与中英文停用词测试，覆盖英文/中文停用词过滤、技术词与中文词保留、纯停用词查询。
 - 2 个混合检索测试，覆盖倒排与语义结果交集、语义顺序和语义服务不可用时的降级。
+- 1 个中文子串扩展测试，验证“引擎”可以匹配索引中的“搜索引擎”。
 - 2 个 Python 语义客户端测试，覆盖响应解析和 HTTP 错误转换。
 - 2 个 `SearchControllerTest` 接口测试。
 - `SearchEngineApplicationTests` 中 4 个调用 Gitee 实际接口的调试用例，运行全量测试时需要能访问 Gitee；如只验证本地代码，可单独执行 `GiteeApiClientTest`、`RepositoryMapperTest`、`RepositorySyncServiceImplTest` 和倒排索引测试。

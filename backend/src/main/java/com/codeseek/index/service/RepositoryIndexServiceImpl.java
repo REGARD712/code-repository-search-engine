@@ -20,9 +20,11 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -46,6 +48,11 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
      * 未指定 limit 时的默认返回条数。
      */
     private static final int DEFAULT_SEARCH_LIMIT = 20;
+
+    /**
+     * 单个查询词最多扩展出的索引词数量，避免子串扫描产生过多候选。
+     */
+    private static final int MAX_EXPANDED_TERMS = 20;
 
     private final RepositoryMapper repositoryMapper;
 
@@ -138,8 +145,15 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
         }
 
         int safeLimit = resolveSearchLimit(limit);
+        List<String> effectiveTerms = expandQueryTerms(currentIndex.get(), queryTerms);
+        if (effectiveTerms.isEmpty()) {
+            LOGGER.info("混合检索完成：query='{}'，倒排候选=0，返回=0，耗时={}ms",
+                    keyword, elapsedMs(startedAt));
+            return List.of();
+        }
+
         List<RepositorySearchResult> invertedResults =
-                indexSearcher.search(currentIndex.get(), queryTerms, MAX_SEARCH_LIMIT);
+                indexSearcher.search(currentIndex.get(), effectiveTerms, MAX_SEARCH_LIMIT);
         if (invertedResults.isEmpty()) {
             LOGGER.info("混合检索完成：query='{}'，倒排候选=0，返回=0，耗时={}ms",
                     keyword, elapsedMs(startedAt));
@@ -176,6 +190,63 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
                 keyword, invertedResults.size(), semanticIds.size(), intersection.size(),
                 elapsedMs(startedAt));
         return intersection;
+    }
+
+    /**
+     * 对中文查询词做子串扩展。
+     *
+     * <p>结巴会把“搜索引擎”切成一个完整词项，因此查询“引擎”时
+     * 精确匹配不到“搜索引擎”的倒排表。这里在精确词项不存在时，
+     * 查找包含该查询词的中文索引词，例如“引擎”扩展到“搜索引擎”。</p>
+     *
+     * @param index      当前倒排索引
+     * @param queryTerms 原始查询词
+     * @return 实际参与倒排检索的词项
+     */
+    private List<String> expandQueryTerms(RepositoryInvertedIndex index, List<String> queryTerms) {
+        if (index == null || queryTerms == null || queryTerms.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> expandedTerms = new LinkedHashSet<>();
+        for (String term : queryTerms) {
+            if (term == null || term.isBlank()) {
+                continue;
+            }
+
+            if (index.postings().containsKey(term)) {
+                expandedTerms.add(term);
+                continue;
+            }
+
+            // 只扩展长度至少为 2 的中文词，避免单字或英文子串产生过多噪声。
+            if (!isChineseTerm(term) || term.length() < 2) {
+                continue;
+            }
+
+            List<String> matchedTerms = index.postings().keySet().stream()
+                    .filter(indexedTerm -> indexedTerm.contains(term))
+                    .sorted()
+                    .limit(MAX_EXPANDED_TERMS)
+                    .toList();
+            if (!matchedTerms.isEmpty()) {
+                LOGGER.debug("查询词扩展：{} -> {}", term, matchedTerms);
+                expandedTerms.addAll(matchedTerms);
+            }
+        }
+        return List.copyOf(expandedTerms);
+    }
+
+    /**
+     * 判断词项是否包含中文。
+     *
+     * @param term 词项
+     * @return true 表示包含汉字
+     */
+    private boolean isChineseTerm(String term) {
+        return term.codePoints()
+                .anyMatch(codePoint -> Character.UnicodeScript.of(codePoint)
+                        == Character.UnicodeScript.HAN);
     }
 
     /**
