@@ -21,6 +21,10 @@ repository:
     # 倒排索引二进制文件位置，可用 REPOSITORY_INDEX_PATH 环境变量覆盖
     path: ${REPOSITORY_INDEX_PATH:./data/repository-index.bin}
 
+  semantic-search:
+    # 本地 Python 向量检索服务地址
+    base-url: ${SEMANTIC_SEARCH_BASE_URL:http://127.0.0.1:8080}
+
 gitee:
   api:
     # Gitee OpenAPI 基础地址

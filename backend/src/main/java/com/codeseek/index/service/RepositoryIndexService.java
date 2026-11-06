@@ -19,11 +19,14 @@ public interface RepositoryIndexService {
     IndexBuildResult rebuildIndex();
 
     /**
-     * 使用倒排索引搜索仓库。
+     * 混合搜索仓库。
+     *
+     * <p>先分别通过倒排索引词频检索和 AI 语义检索得到仓库 ID 列表，
+     * 对两个 ID 集合取交集，最终按 AI 语义结果的顺序返回。</p>
      *
      * @param keyword 查询关键词
      * @param limit   返回条数
-     * @return 按词频排序的仓库列表
+     * @return 按语义顺序排列的交集仓库列表
      */
     List<RepositorySearchResult> search(String keyword, int limit);
 

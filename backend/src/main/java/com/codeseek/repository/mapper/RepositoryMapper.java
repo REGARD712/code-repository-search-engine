@@ -76,6 +76,17 @@ public interface RepositoryMapper extends BaseMapper<Repository> {
     List<Repository> selectByIds(@Param("ids") List<Long> ids);
 
     /**
+     * 根据数据库主键批量查询仓库，并保持入参 ID 的顺序。
+     *
+     * <p>使用 MySQL 的 {@code FIELD(id, ...)} 排序，适合搜索结果按相关性
+     * 得到 ID 后再批量读取完整仓库信息的场景。</p>
+     *
+     * @param ids 数据库主键列表，按期望的返回顺序排列；空列表返回空结果
+     * @return 仓库列表，顺序与 {@code ids} 中实际存在的 ID 顺序一致
+     */
+    List<Repository> selectByIdsInOrder(@Param("ids") List<Long> ids);
+
+    /**
      * 查询全部仓库，按主键升序排列。
      *
      * @return 仓库列表

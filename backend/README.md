@@ -1,6 +1,6 @@
 # Code Repository Search Engine — Backend
 
-代码仓库搜索引擎的后端项目，已搭好 Spring Boot 基础结构，封装了 Gitee 用户、仓库和 README 查询接口，生成了仓库表实体与 MyBatis Mapper，并实现了基于结巴搜索模式分词的本地倒排索引；暂不包含业务 Controller 和前端联调代码。
+代码仓库搜索引擎的后端项目，使用 Spring Boot 3.3.3 构建。已实现 Gitee 用户/组织仓库同步、仓库表实体与 MyBatis Mapper、结巴分词倒排索引，以及倒排索引 + AI 语义向量的混合检索，并提供 `GET /search` HTTP 接口。
 
 ## 技术栈
 
@@ -13,6 +13,8 @@
 | 持久层 | MyBatis-Plus 3.5.5（mybatis-plus-spring-boot3-starter） |
 | 数据库 | MySQL 8.x，开发与测试统一连接实际数据库 |
 | 分词 | jieba-analysis 1.0.2，搜索引擎模式 |
+| 语义检索 | Python 3.14 + text2vec-base-chinese + FAISS（独立 HTTP 服务） |
+| HTTP 客户端 | Spring RestClient，用于调用 Python 语义服务 |
 | 工具 | Lombok |
 | 测试 | Spring Boot Starter Test / JUnit 5 |
 
@@ -32,6 +34,11 @@ backend/
 │   │   │   ├── controller/
 │   │   │   │   ├── SearchController.java              # GET /search
 │   │   │   │   └── SearchRequest.java                 # 查询请求体
+│   │   │   ├── semantic/                              # AI 语义检索客户端
+│   │   │   │   ├── SemanticSearchService.java
+│   │   │   │   ├── PythonSemanticSearchService.java
+│   │   │   │   ├── SemanticSearchException.java
+│   │   │   │   └── model/                             # Python 响应模型
 │   │   │   ├── gitee/
 │   │   │   │   ├── api/GiteeApi.java                 # 面向业务层的接口契约
 │   │   │   │   ├── client/GiteeApiClient.java        # RestClient 实现、分页与字段映射
@@ -64,10 +71,12 @@ backend/
 │       │   ├── gitee/client/GiteeApiClientTest.java  # Gitee 客户端单元测试
 │       │   ├── repository/mapper/RepositoryMapperTest.java
 │       │   ├── repository/service/RepositorySyncServiceImplTest.java
-│       │   └── index/                               # 倒排索引单元测试
-│       │       ├── builder/RepositoryIndexBuilderTest.java
-│       │       ├── search/MultiWayIndexSearcherTest.java
-│       │       └── store/IndexFileStoreTest.java
+│       │   ├── index/                               # 倒排索引单元测试
+│       │   │   ├── builder/RepositoryIndexBuilderTest.java
+│       │   │   ├── search/MultiWayIndexSearcherTest.java
+│       │   │   ├── service/RepositoryIndexServiceImplTest.java
+│       │   │   └── store/IndexFileStoreTest.java
+│       │   └── semantic/PythonSemanticSearchServiceTest.java
 ├── mvnw
 ├── mvnw.cmd
 ├── pom.xml
@@ -79,6 +88,8 @@ backend/
 - JDK 17
 - 可访问 Maven 仓库（项目当前使用阿里云镜像配置，实际以本机 Maven settings 为准）
 - 首次执行 Wrapper 时会自动下载 Maven 3.8.1 到用户目录的 `~/.m2/wrapper/dists`
+- MySQL 8.x，数据库 `search_engine`
+- Python 3.14 语义服务（默认 `http://127.0.0.1:8080`），用于提供 AI 语义召回
 
 确认版本：
 
@@ -103,19 +114,24 @@ Java version: 17.x
 # 进入后端目录
 cd backend
 
+# 数据库账号密码
+$env:MYSQL_USERNAME = "root"
+$env:MYSQL_PASSWORD = "你的 MySQL root 密码"
+
 # 启动开发服务（默认 80 端口）
 .\mvnw.cmd spring-boot:run
 
+# 或打包后直接运行
+.\mvnw.cmd -DskipTests package
+& "$env:JAVA_HOME\bin\java.exe" -jar target\code-repository-search-engine-0.0.1-SNAPSHOT.jar
+
 # 运行测试
 .\mvnw.cmd test
-
-# 打包可执行 jar
-.\mvnw.cmd clean package
 ```
 
 macOS / Linux 将 `.\mvnw.cmd` 替换为 `./mvnw`。
 
-启动后可访问 `http://localhost:80`，搜索接口为 `GET /search`。
+启动后可访问 `http://localhost:80`，搜索接口为 `GET /search`。如果 `spring-boot:run` 在含中文路径的工作区出现主类加载问题，优先使用打包后的 jar 启动。Windows 下监听 80 端口可能需要管理员权限。
 
 ## 配置
 
@@ -126,17 +142,22 @@ spring:
   application:
     name: code-repository-search-engine
   datasource:
-    url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3306/search_engine?...}
-    username: ${MYSQL_USERNAME:root}
-    password: ${MYSQL_PASSWORD:}
+    url: "jdbc:mysql://127.0.0.1:3306/search_engine?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true"
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+server:
+  port: 80
 
 mybatis:
   mapper-locations: classpath*:mapper/**/*.xml
 
 repository:
   index:
-    path: ./data/repository-index.bin
+    path: ${REPOSITORY_INDEX_PATH:./data/repository-index.bin}
+  semantic-search:
+    base-url: ${SEMANTIC_SEARCH_BASE_URL:http://127.0.0.1:8080}
 
 gitee:
   api:
@@ -148,13 +169,14 @@ gitee:
     read-timeout: 30s
 ```
 
-数据库连接参数可通过环境变量覆盖：
+数据库账号密码通过环境变量提供：
 
 ```powershell
-$env:MYSQL_URL = "jdbc:mysql://127.0.0.1:3306/search_engine?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false"
 $env:MYSQL_USERNAME = "root"
 $env:MYSQL_PASSWORD = "你的密码"
 ```
+
+`MYSQL_URL` 当前未作为配置占位符使用；如需切换数据库地址，请修改 `application.yml` 中的 `spring.datasource.url`。
 
 ## 仓库表实体与 Mapper
 
@@ -189,6 +211,8 @@ mysql -u root -p < backend/src/main/resources/db/schema.sql
 | `insert` | 新增仓库并回填自增主键 |
 | `batchInsert` | 批量新增仓库 |
 | `selectById` | 按数据库主键查询 |
+| `selectByIds` | 按主键集合批量查询，默认按主键升序 |
+| `selectByIdsInOrder` | 按主键集合批量查询，返回顺序与入参 `ids` 一致 |
 | `selectByRepositoryId` | 按 Gitee 仓库 ID 查询，返回列表 |
 | `selectByFullName` | 按仓库全名查询，返回列表 |
 | `selectAll` | 查询全部仓库 |
@@ -199,6 +223,8 @@ mysql -u root -p < backend/src/main/resources/db/schema.sql
 | `deleteById` | 按主键删除 |
 
 由于 `repositoryId` 和 `fullName` 在原始表结构中都是普通索引而非唯一索引，对应查询方法返回 `List<Repository>`，避免重复数据导致 `TooManyResultsException`。
+
+`selectByIdsInOrder` 使用 MySQL `FIELD(id, ...)` 排序，用于把倒排索引/语义检索返回的 ID 顺序原样映射到仓库列表。空 `ids` 返回空列表。
 
 ## 仓库同步服务
 
@@ -337,7 +363,37 @@ List<RepositorySearchResult> results = repositoryIndexService.search("权限管�
 - 词频相同时，命中词数多的优先；
 - 仍相同时按文档 ID 升序，保证结果稳定。
 
-当前采用“命中任意查询词即可返回”的策略，适合搜索召回；后续如需严格 AND 或 BM25 打分，可以在归并层增加过滤和权重。
+倒排层采用“命中任意查询词即可返回”的策略，适合搜索召回；后续如需严格 AND 或 BM25 打分，可以在归并层增加过滤和权重。
+
+混合检索最终要求同时命中倒排结果和语义结果，交集之外的仓库不会返回。
+
+### 混合检索
+
+[RepositoryIndexServiceImpl.java](src/main/java/com/codeseek/index/service/RepositoryIndexServiceImpl.java) 的 `search` 方法现在执行混合检索：
+
+1. 倒排索引按词频召回最多 1000 个仓库 ID；
+2. 调用本地 Python 向量服务，按 AI 语义相似度召回最多 1000 个仓库 ID；
+3. 对两个 ID 列表取交集；
+4. 按 AI 语义结果中的顺序返回交集仓库。
+
+Python 服务地址：
+
+```yaml
+repository:
+  semantic-search:
+    base-url: ${SEMANTIC_SEARCH_BASE_URL:http://127.0.0.1:8080}
+```
+
+使用前需要先启动 Python 向量服务：
+
+```powershell
+cd python
+$env:PYTHONNOUSERSITE = "1"
+$env:MYSQL_PASSWORD = "你的 MySQL root 密码"
+C:\JAVA\Python314\python.exe serve_repository_vectors.py --host 127.0.0.1 --port 8080
+```
+
+如果 Python 语义服务暂时不可用，Java 会记录告警并降级为倒排索引结果，避免整个搜索接口不可用。
 
 ### 索引文件加载优化
 
@@ -441,10 +497,11 @@ GET /search?query=大模型
 实现说明：
 
 - 应用启动时 [RepositoryIndexServiceImpl.java](src/main/java/com/codeseek/index/service/RepositoryIndexServiceImpl.java) 的 `@PostConstruct` 会调用 `IndexFileStore.load` 加载 `./data/repository-index.bin`。
-- 查询关键词传给 `RepositoryIndexService.search`，倒排索引返回排序后的仓库 ID。
-- 控制器使用 `RepositoryMapper.selectByIds` 一次性批量补齐 `readme`、`repositoryId` 等完整字段。
-- 最终结果保持倒排索引的相关性顺序，并限制最多 1000 条。
-- 查询为空或没有匹配结果时返回 `[]`。
+- 查询关键词传给 `RepositoryIndexService.search`，由倒排索引和 Python 语义服务分别召回 ID，然后取交集。
+- 控制器使用 `RepositoryMapper.selectByIdsInOrder` 一次性批量补齐 `readme`、`repositoryId` 等完整字段，并保持语义 ID 顺序。
+- 最终结果按 AI 语义顺序返回，并限制最多 1000 条。
+- 查询为空、没有交集或没有匹配结果时返回 `[]`。
+- Python 语义服务不可用时，搜索降级为倒排索引结果。
 - PowerShell 的 `Invoke-RestMethod` 不支持 GET 请求体，调试时可使用 `?query=` 形式，或使用 curl / Postman 发送 JSON body。
 
 启动示例：
@@ -465,15 +522,18 @@ $env:MYSQL_PASSWORD = "你的 MySQL root 密码"
 运行数据库相关测试前：
 
 1. 执行 [schema.sql](src/main/resources/db/schema.sql) 创建数据库和 `repository` 表。
-2. 配置正确的 `MYSQL_URL`、`MYSQL_USERNAME`、`MYSQL_PASSWORD`。
+2. 配置正确的 `MYSQL_USERNAME`、`MYSQL_PASSWORD`。
 3. 数据库相关测试类使用 `@Transactional`，每个测试方法结束后自动回滚，测试数据不会留在实际数据库中。
 
 测试包含：
 
 - 8 个 Gitee API 客户端单元测试，覆盖分页、字段映射、私有仓库过滤、README 解码、404 和 HTTP 错误处理。
-- 2 个基于实际 MySQL 的 `RepositoryMapper` 集成测试，覆盖新增、批量新增、查询、分页、更新和删除。
+- 3 个基于实际 MySQL 的 `RepositoryMapper` 集成测试，覆盖新增、批量新增、查询、分页、更新、删除和 `selectByIdsInOrder` 顺序。
 - 2 个基于实际 MySQL 的 `RepositorySyncServiceImpl` 测试，覆盖组织仓库兜底、README 填充和批量落库。
 - 7 个倒排索引单元测试，覆盖分词构建、多路归并排序、limit、空结果、索引文件保存和加载。
+- 2 个混合检索测试，覆盖倒排与语义结果交集、语义顺序和语义服务不可用时的降级。
+- 2 个 Python 语义客户端测试，覆盖响应解析和 HTTP 错误转换。
+- 2 个 `SearchControllerTest` 接口测试。
 - `SearchEngineApplicationTests` 中 4 个调用 Gitee 实际接口的调试用例，运行全量测试时需要能访问 Gitee；如只验证本地代码，可单独执行 `GiteeApiClientTest`、`RepositoryMapperTest`、`RepositorySyncServiceImplTest` 和倒排索引测试。
 
 若运行环境限制 JVM 自附加（例如部分受限沙箱），Mockito 可能初始化失败，可追加：
@@ -487,7 +547,7 @@ $env:MYSQL_PASSWORD = "你的 MySQL root 密码"
 ## 后续建议
 
 1. 基于 `RepositorySyncService` 增加批量用户同步、定时任务和重复数据更新策略。
-2. 按 PRD 增加对外搜索接口、分页参数与统一响应体。
+2. 为 `GET /search` 增加分页参数、统一响应体和异常处理。
 3. 将本地倒排索引扩展为分布式索引（Elasticsearch / OpenSearch），并增加增量重建能力。
 4. 增加统一异常处理、参数校验、接口文档（SpringDoc）和日志规范。
 5. 将 `ui/` 静态原型接入真实接口，或部署到 `src/main/resources/static`。

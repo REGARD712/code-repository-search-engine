@@ -12,10 +12,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * 仓库搜索 HTTP 接口。
@@ -83,19 +79,9 @@ public class SearchController {
                 .map(RepositorySearchResult::id)
                 .toList();
 
-        // 一次批量查询补齐完整仓库字段，避免每条结果单独访问数据库。
-        Map<Long, Repository> repositoryById = repositoryMapper.selectByIds(repositoryIds)
+        // 一次批量查询补齐完整仓库字段，SQL 内部按传入 ID 顺序返回。
+        return repositoryMapper.selectByIdsInOrder(repositoryIds)
                 .stream()
-                .collect(Collectors.toMap(
-                        Repository::getId,
-                        Function.identity(),
-                        (left, right) -> left
-                ));
-
-        // 保持倒排索引返回的相关性顺序，不按数据库返回顺序重排。
-        return rankedResults.stream()
-                .map(result -> repositoryById.get(result.id()))
-                .filter(Objects::nonNull)
                 .limit(MAX_RESULT_COUNT)
                 .toList();
     }

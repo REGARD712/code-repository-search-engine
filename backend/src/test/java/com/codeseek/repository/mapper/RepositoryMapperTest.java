@@ -95,4 +95,38 @@ class RepositoryMapperTest {
         assertThat(repositoryMapper.deleteById(saved.getId())).isEqualTo(1);
         assertThat(repositoryMapper.selectById(saved.getId())).isNull();
     }
+
+    /**
+     * 验证批量查询结果与入参 ID 的顺序一致。
+     */
+    @Test
+    void shouldSelectByIdsInOrder() {
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        Repository first = new Repository(
+                null,
+                "test-order/first-" + suffix,
+                "https://gitee.com/test-order/first-" + suffix,
+                "first",
+                System.nanoTime()
+        );
+        Repository second = new Repository(
+                null,
+                "test-order/second-" + suffix,
+                "https://gitee.com/test-order/second-" + suffix,
+                "second",
+                System.nanoTime()
+        );
+
+        assertThat(repositoryMapper.insert(first)).isEqualTo(1);
+        assertThat(repositoryMapper.insert(second)).isEqualTo(1);
+
+        // 故意按与数据库主键相反的顺序查询。
+        List<Repository> results = repositoryMapper.selectByIdsInOrder(
+                List.of(second.getId(), first.getId())
+        );
+
+        assertThat(results)
+                .extracting(Repository::getId)
+                .containsExactly(second.getId(), first.getId());
+    }
 }

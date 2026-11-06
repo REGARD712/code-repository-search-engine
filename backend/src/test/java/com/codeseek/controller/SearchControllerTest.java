@@ -54,7 +54,7 @@ class SearchControllerTest {
         );
 
         when(repositoryIndexService.search("数据结构", 1000)).thenReturn(List.of(result));
-        when(repositoryMapper.selectByIds(List.of(10210296L))).thenReturn(List.of(repository));
+        when(repositoryMapper.selectByIdsInOrder(List.of(10210296L))).thenReturn(List.of(repository));
 
         mockMvc.perform(get("/search")
                         .contentType(MediaType.APPLICATION_JSON)

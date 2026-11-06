@@ -10,6 +10,8 @@ import com.codeseek.index.segment.JiebaTextSegmenter;
 import com.codeseek.index.store.IndexFileStore;
 import com.codeseek.repository.entity.Repository;
 import com.codeseek.repository.mapper.RepositoryMapper;
+import com.codeseek.semantic.SemanticSearchException;
+import com.codeseek.semantic.SemanticSearchService;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +21,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 /**
  * 仓库倒排索引服务实现。
@@ -31,6 +36,16 @@ import java.util.concurrent.atomic.AtomicReference;
 public class RepositoryIndexServiceImpl implements RepositoryIndexService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RepositoryIndexServiceImpl.class);
+
+    /**
+     * 单次检索最多合并的结果数。
+     */
+    private static final int MAX_SEARCH_LIMIT = 1000;
+
+    /**
+     * 未指定 limit 时的默认返回条数。
+     */
+    private static final int DEFAULT_SEARCH_LIMIT = 20;
 
     private final RepositoryMapper repositoryMapper;
 
@@ -44,6 +59,8 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
 
     private final RepositoryIndexProperties properties;
 
+    private final SemanticSearchService semanticSearchService;
+
     private final AtomicReference<RepositoryInvertedIndex> currentIndex =
             new AtomicReference<>(RepositoryInvertedIndex.empty());
 
@@ -53,9 +70,10 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
      * @param repositoryMapper 仓库 Mapper
      * @param indexBuilder     索引构建器
      * @param indexSearcher    多路归并检索器
-     * @param indexFileStore   索引文件读写器
-     * @param textSegmenter    结巴分词器
-     * @param properties       索引配置
+     * @param indexFileStore        索引文件读写器
+     * @param textSegmenter         结巴分词器
+     * @param properties            索引配置
+     * @param semanticSearchService AI 语义检索服务
      */
     public RepositoryIndexServiceImpl(
             RepositoryMapper repositoryMapper,
@@ -63,7 +81,8 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
             MultiWayIndexSearcher indexSearcher,
             IndexFileStore indexFileStore,
             JiebaTextSegmenter textSegmenter,
-            RepositoryIndexProperties properties
+            RepositoryIndexProperties properties,
+            SemanticSearchService semanticSearchService
     ) {
         this.repositoryMapper = repositoryMapper;
         this.indexBuilder = indexBuilder;
@@ -71,6 +90,7 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
         this.indexFileStore = indexFileStore;
         this.textSegmenter = textSegmenter;
         this.properties = properties;
+        this.semanticSearchService = semanticSearchService;
     }
 
     /**
@@ -114,7 +134,52 @@ public class RepositoryIndexServiceImpl implements RepositoryIndexService {
         if (queryTerms.isEmpty()) {
             return List.of();
         }
-        return indexSearcher.search(currentIndex.get(), queryTerms, limit);
+
+        int safeLimit = resolveSearchLimit(limit);
+        List<RepositorySearchResult> invertedResults =
+                indexSearcher.search(currentIndex.get(), queryTerms, MAX_SEARCH_LIMIT);
+        if (invertedResults.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> semanticIds;
+        try {
+            semanticIds = semanticSearchService.searchIds(keyword, MAX_SEARCH_LIMIT);
+        } catch (SemanticSearchException exception) {
+            // 语义服务不可用时降级为倒排结果，避免整个搜索接口不可用。
+            LOGGER.warn("语义检索不可用，降级为倒排索引结果：{}", exception.getMessage());
+            return invertedResults.stream()
+                    .limit(safeLimit)
+                    .toList();
+        }
+
+        // 取交集，并严格保持 AI 语义结果的顺序。
+        Map<Long, RepositorySearchResult> invertedById = invertedResults.stream()
+                .collect(Collectors.toMap(
+                        RepositorySearchResult::id,
+                        result -> result,
+                        (left, right) -> left
+                ));
+
+        return semanticIds.stream()
+                .distinct()
+                .map(invertedById::get)
+                .filter(Objects::nonNull)
+                .limit(safeLimit)
+                .toList();
+    }
+
+    /**
+     * 处理搜索返回条数。
+     *
+     * @param limit 原始条数
+     * @return 合法条数
+     */
+    private int resolveSearchLimit(int limit) {
+        if (limit <= 0) {
+            return DEFAULT_SEARCH_LIMIT;
+        }
+        return Math.min(limit, MAX_SEARCH_LIMIT);
     }
 
     /**
