@@ -66,6 +66,7 @@ backend/
 │   │       ├── mapper/RepositoryMapper.xml           # 仓库表 Mapper SQL
 │   │       ├── db/schema.sql                         # MySQL 建表脚本
 │   │       ├── logback-spring.xml                    # 控制台与滚动文件日志
+│   │       ├── stopwords.txt                         # 中英文停用词
 │   │       └── application.yml
 │   └── test/
 │       ├── java/com/codeseek/
@@ -381,7 +382,7 @@ public class GiteeRepositorySyncService {
 2. 以 `repository.id` 作为文档 ID，构建 `id -> RepositoryDocument` 文档列表。
 3. 对 README 做文本归一化：去掉 HTML 标签、标点、符号等特殊字符，只保留中文、字母和数字，并统一小写。
 4. 使用 `JiebaSegmenter.SegMode.SEARCH` 搜索引擎模式分词。
-5. 在分词完成后过滤中英文停用词（英文如 the、and、for、this；中文如 的、了、一个、因为、进行），避免虚词进入倒排索引。
+5. 在分词完成后从 `classpath:stopwords.txt` 加载停用词并过滤（英文如 the、and、for、this；中文如 的、了、一个、因为、进行），避免虚词进入倒排索引。
 6. 统计每个词在每个文档中的词频，生成 `词项 -> [(文档 ID, 词频)]` 倒排表。
 7. 倒排表中的文档 ID 升序排列，供查询时多路归并使用。
 8. 保存为二进制索引文件，并替换内存中的索引快照。
@@ -409,6 +410,28 @@ List<RepositorySearchResult> results = repositoryIndexService.search("权限管�
 倒排层采用“命中任意查询词即可返回”的策略，适合搜索召回；后续如需严格 AND 或 BM25 打分，可以在归并层增加过滤和权重。
 
 混合检索最终要求同时命中倒排结果和语义结果，交集之外的仓库不会返回。
+
+### 停用词维护
+
+停用词集中维护在 [stopwords.txt](src/main/resources/stopwords.txt)，不再写死在 Java 代码中。
+
+文件格式：
+
+- UTF-8 编码；
+- 每行一个停用词；
+- 空行会被忽略；
+- 以 `#` 开头的行是注释，不参与过滤。
+
+[StopWordFilter.java](src/main/java/com/codeseek/index/segment/StopWordFilter.java) 在类加载时通过 classpath 读取一次：
+
+```text
+/stopwords.txt
+```
+
+修改停用词后需要：
+
+1. 重新打包或重启服务；
+2. 重新执行 `RepositoryIndexService.rebuildIndex()`，让已有倒排索引使用新的停用词集合。
 
 ### 混合检索
 

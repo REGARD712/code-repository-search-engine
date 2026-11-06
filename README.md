@@ -300,6 +300,7 @@ $env:MYSQL_PASSWORD = "你的 MySQL root 密码"
 - `MYSQL_PASSWORD`、`GITEE_ACCESS_TOKEN` 等敏感信息通过环境变量提供，不要提交到仓库。
 - `.idea/` 已加入 `.gitignore`，避免 IDE 运行配置中的本地密码被提交。
 - Java 默认端口 80，Python 默认端口 8080，两个服务需要分别启动。
+- 中英文停用词维护在 `backend/src/main/resources/stopwords.txt`，修改后需要重启并重建倒排索引。
 - 倒排索引文件 `backend/data/repository-index.bin` 属于运行时数据，不提交到仓库。
 - 仓库向量和 FAISS 索引默认生成到 `C:\JAVA\search_engine`，属于本地离线产物。
 
