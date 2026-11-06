@@ -15,6 +15,7 @@
 - 查询时执行倒排召回与语义召回的交集检索；
 - 提供 `GET /search` HTTP 接口，返回完整仓库数据；
 - 支持控制台与滚动文件运行日志，记录 HTTP 请求和混合检索耗时；
+- 提供运行在 3000 端口的前端服务，支持后端代理、Jieba 分词、README 红色高亮和每页 10 条分页；
 - 提供图文仓库卡片、关键词搜索、分页和响应式布局的静态 UI 原型；
 - 包含产品需求文档、后端说明和 Python 向量服务说明。
 
@@ -76,6 +77,7 @@ code-repository-search-engine/
 │   ├── query_repository_vectors.py
 │   └── README.md
 ├── prd/                      产品需求文档
+├── frontend/                 可运行的搜索前端服务（3000 端口）
 ├── ui/                       静态 HTML/CSS 原型
 ├── README.en.md              English README
 └── README.md
@@ -261,6 +263,32 @@ $env:LOG_PATH = "C:\JAVA\logs\code-repository-search-engine"
 
 请求日志不会记录请求体，避免 README 文本进入日志。`logs/` 已加入 `.gitignore`，不会提交到仓库。
 
+## 前端服务
+
+[frontend](frontend/README.md) 是一个运行在 3000 端口的 Node 服务，包含搜索表单、结果分页、结果总数和 README 关键词红色高亮。
+
+```powershell
+cd frontend
+npm install
+npm start
+```
+
+打开：
+
+```text
+http://localhost:3000
+```
+
+默认从后端读取：
+
+```text
+http://localhost/search?query=...
+```
+
+前端服务使用 `@node-rs/jieba` 对查询词分词，并通过同源 `/api/search` 代理 Java 后端，避免浏览器跨域问题。分页固定每页 10 条，51 条结果会显示为 6 页，最后一页 1 条。
+
+详细说明见 [frontend/README.md](frontend/README.md)。
+
 ## UI 原型
 
 直接用浏览器打开：
@@ -293,6 +321,7 @@ $env:MYSQL_PASSWORD = "你的 MySQL root 密码"
 - [PRD：代码仓库搜索引擎](prd/代码仓库搜索引擎-PRD-v1.0.md)
 - [后端详细说明](backend/README.md)
 - [Python 向量服务说明](python/README.md)
+- [前端服务说明](frontend/README.md)
 - [UI 原型说明](ui/README.md)
 
 ## 注意事项

@@ -30,7 +30,7 @@ public class SearchController {
     /**
      * 单次请求最多返回条数。
      */
-    private static final int MAX_RESULT_COUNT = 1000;
+    private static final int MAX_RESULT_COUNT = 2000;
 
     private final RepositoryIndexService repositoryIndexService;
 
@@ -93,13 +93,7 @@ public class SearchController {
                 .limit(MAX_RESULT_COUNT)
                 .toList();
 
-        // 对readme字段进行截取
-        repositories.forEach(repository -> {
-            if (StringUtils.hasText(repository.getReadme()) && repository.getReadme().length() > 150) {
-                repository.setReadme(repository.getReadme().substring(0, 150));
-            }
-        });
-
+        // 保留完整 README，前端需要完整文本才能对深层关键词做高亮。
         LOGGER.info("搜索完成：query='{}'，候选={}，返回={}，耗时={}ms",
                 keyword, rankedResults.size(), repositories.size(), elapsedMs(startedAt));
         return repositories;

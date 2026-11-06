@@ -42,8 +42,8 @@ except ImportError:  # faiss 可选；没有时使用 numpy 余弦矩阵
 
 LOGGER = logging.getLogger("serve_repository_vectors")
 
-MAX_TOP_K = 100
-DEFAULT_TOP_K = 10
+MAX_TOP_K = 2000
+DEFAULT_TOP_K = 1000
 
 
 def load_metadata(index_dir: Path) -> dict:
