@@ -95,8 +95,8 @@ public class SearchController {
 
         // 对readme字段进行截取
         repositories.forEach(repository -> {
-            if (StringUtils.hasText(repository.getReadme())) {
-                repository.setReadme(repository.getReadme().substring(0, 200));
+            if (StringUtils.hasText(repository.getReadme()) && repository.getReadme().length() > 150) {
+                repository.setReadme(repository.getReadme().substring(0, 150));
             }
         });
 
