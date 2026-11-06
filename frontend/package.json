@@ -1,0 +1,12 @@
+{
+  "name": "repository-search-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "代码仓库搜索引擎前端与本地静态服务",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@node-rs/jieba": "2.0.4"
+  }
+}

@@ -23,8 +23,8 @@
 
 ```text
                          ┌──────────────────────────┐
-                         │        UI 原型           │
-                         │  ui/index.html           │
+                         │         前端服务         │
+                         │  127.0.0.1:3000          │
                          └────────────┬─────────────┘
                                       │ GET /search
                                       ▼
@@ -91,6 +91,8 @@ code-repository-search-engine/
 | Maven | 3.8.1（使用项目自带 Wrapper） |
 | MySQL | 8.x，数据库 `search_engine` |
 | Python | 3.14.0，当前环境 `C:\JAVA\Python314\python.exe` |
+| Node.js | 24.x，用于 frontend 服务 |
+| npm | 11.x，安装 `@node-rs/jieba` |
 | AI 模型 | 本地 `text2vec-base-chinese` |
 | 向量索引 | FAISS `IndexFlatIP`，不可用时退化为 numpy 余弦检索 |
 
@@ -265,7 +267,9 @@ $env:LOG_PATH = "C:\JAVA\logs\code-repository-search-engine"
 
 ## 前端服务
 
-[frontend](frontend/README.md) 是一个运行在 3000 端口的 Node 服务，包含搜索表单、结果分页、结果总数和 README 关键词红色高亮。
+[frontend](frontend/README.md) 是一个运行在 3000 端口的 Node 服务，采用第一版深色 Hero 设计，包含搜索表单、结果分页、结果总数和 README 关键词红色高亮。
+
+![前端预览](frontend/preview.png)
 
 ```powershell
 cd frontend
@@ -286,6 +290,35 @@ http://localhost/search?query=...
 ```
 
 前端服务使用 `@node-rs/jieba` 对查询词分词，并通过同源 `/api/search` 代理 Java 后端，避免浏览器跨域问题。分页固定每页 10 条，51 条结果会显示为 6 页，最后一页 1 条。
+
+启动顺序：先启动 Java 后端（80），再启动前端（3000）。如果后端地址不同：
+
+```powershell
+$env:BACKEND_URL = "http://127.0.0.1:8080/search"
+npm start
+```
+
+### npm 缓存
+
+`npm install` 默认使用：
+
+```text
+%LOCALAPPDATA%\npm-cache
+```
+
+本机当前为：
+
+```text
+C:\Users\27271\AppData\Local\npm-cache
+```
+
+`C:\JAVA\npm-cache` 只是安装依赖时临时指定的缓存目录，不属于项目，可以安全删除：
+
+```powershell
+Remove-Item "C:\JAVA\npm-cache" -Recurse -Force
+```
+
+删除缓存不会影响 `frontend/node_modules`；重新安装时 npm 会按当前配置重新生成缓存。
 
 详细说明见 [frontend/README.md](frontend/README.md)。
 

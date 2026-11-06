@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="基于倒排索引与 AI 语义向量的代码仓库搜索引擎">
+  <title>代码仓库搜索引擎</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero-glow" aria-hidden="true"></div>
+      <div class="hero-content">
+        <div class="brand-line">
+          <span class="brand-mark" aria-hidden="true">⌕</span>
+          <span class="brand-name">CODE REPOSITORY SEARCH</span>
+        </div>
+
+        <h1>码寻 CODESEEK</h1>
+        <h2>在代码仓库里，<br><span>找到真正需要的那一个。</span></h2>
+        <p class="hero-copy">
+          输入一个主题或技术关键词，结合倒排索引与 AI 语义检索，
+          从 README 中快速定位相关仓库。
+        </p>
+
+        <form id="search-form" class="search-form" role="search">
+          <label class="sr-only" for="search-input">搜索仓库</label>
+          <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5"></circle>
+              <path d="m16 16 4.2 4.2"></path>
+            </svg>
+            <input
+              id="search-input"
+              name="query"
+              type="search"
+              autocomplete="off"
+              placeholder="试试：数据结构、大模型、Spring…"
+              maxlength="200"
+            >
+            <button type="submit" class="search-button">
+              <span>搜索</span>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M4 10h11M10.5 4.5 16 10l-5.5 5.5"></path>
+              </svg>
+            </button>
+          </div>
+        </form>
+
+        <div class="quick-searches" aria-label="推荐搜索">
+          <span class="quick-label">试试</span>
+          <button type="button" class="quick-chip" data-query="数据结构">数据结构</button>
+          <button type="button" class="quick-chip" data-query="大模型">大模型</button>
+          <button type="button" class="quick-chip" data-query="Spring">Spring</button>
+          <button type="button" class="quick-chip" data-query="权限管理">权限管理</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <section id="summary" class="summary" hidden aria-live="polite">
+        <div class="summary-copy">
+          <span class="summary-kicker">SEARCH RESULTS</span>
+          <h2>找到 <strong id="total-count">0</strong> 个相关仓库</h2>
+          <p id="summary-meta" class="summary-meta"></p>
+        </div>
+        <div id="token-list" class="token-list" aria-label="查询分词结果"></div>
+      </section>
+
+      <section id="loading" class="state-panel loading-panel" hidden aria-live="polite">
+        <span class="spinner" aria-hidden="true"></span>
+        <div>
+          <h2>正在检索…</h2>
+          <p>正在同时执行关键词召回与语义召回。</p>
+        </div>
+      </section>
+
+      <section id="error-panel" class="state-panel error-panel" hidden role="alert">
+        <span class="state-icon" aria-hidden="true">!</span>
+        <div>
+          <h2>搜索暂时不可用</h2>
+          <p id="error-message"></p>
+          <button type="button" id="retry-button" class="ghost-button">重新尝试</button>
+        </div>
+      </section>
+
+      <section id="empty-panel" class="state-panel empty-panel" hidden>
+        <span class="state-icon" aria-hidden="true">⌕</span>
+        <div>
+          <h2 id="empty-title">输入关键词开始搜索</h2>
+          <p id="empty-copy">例如：数据结构、大模型、Spring 或权限管理。</p>
+        </div>
+      </section>
+
+      <section id="results" class="results" aria-live="polite" aria-label="仓库搜索结果"></section>
+
+      <nav id="pagination" class="pagination" hidden aria-label="搜索结果分页">
+        <div class="pagination-info">
+          <span id="page-summary"></span>
+          <span class="pagination-page-size">每页 10 条</span>
+        </div>
+        <div class="pagination-controls">
+          <button type="button" id="prev-page" class="page-arrow" aria-label="上一页">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.5 4-6 6 6 6"></path></svg>
+          </button>
+          <div id="page-numbers" class="page-numbers"></div>
+          <button type="button" id="next-page" class="page-arrow" aria-label="下一页">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7.5 4 6 6-6 6"></path></svg>
+          </button>
+        </div>
+      </nav>
+    </main>
+
+    <footer class="site-footer">
+      <span>Code Repository Search</span>
+      <span class="footer-dot" aria-hidden="true"></span>
+      <span>倒排索引 · AI 语义召回 · README 高亮</span>
+    </footer>
+  </div>
+
+  <template id="result-card-template">
+    <article class="repo-card">
+      <div class="repo-card-top">
+        <div class="repo-heading">
+          <span class="repo-index" aria-hidden="true"></span>
+          <a class="repo-name" target="_blank" rel="noopener noreferrer"></a>
+        </div>
+        <span class="repo-id"></span>
+      </div>
+
+      <div class="repo-address-row">
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M8 12.5 12.5 8M7 15l-1 1a3.5 3.5 0 0 1-5-5l3-3a3.5 3.5 0 0 1 5 0M13 5l1-1a3.5 3.5 0 0 1 5 5l-3 3a3.5 3.5 0 0 1-5 0"></path>
+        </svg>
+        <a class="repo-url" target="_blank" rel="noopener noreferrer"></a>
+      </div>
+
+      <div class="readme-head">
+        <span class="readme-label">README</span>
+        <span class="readme-hint">关键词已标红</span>
+      </div>
+      <pre class="repo-readme"></pre>
+    </article>
+  </template>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
