@@ -92,6 +92,14 @@ public class SearchController {
                 .stream()
                 .limit(MAX_RESULT_COUNT)
                 .toList();
+
+        // 对readme字段进行截取
+        repositories.forEach(repository -> {
+            if (StringUtils.hasText(repository.getReadme())) {
+                repository.setReadme(repository.getReadme().substring(0, 200));
+            }
+        });
+
         LOGGER.info("搜索完成：query='{}'，候选={}，返回={}，耗时={}ms",
                 keyword, rankedResults.size(), repositories.size(), elapsedMs(startedAt));
         return repositories;
