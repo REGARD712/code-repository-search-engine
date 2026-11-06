@@ -59,6 +59,7 @@ backend/
 │   │   │       ├── model/                             # 文档、倒排列表、检索结果
 │   │   │       ├── search/MultiWayIndexSearcher.java
 │   │   │       ├── segment/JiebaTextSegmenter.java
+│   │   │       ├── segment/StopWordFilter.java
 │   │   │       ├── service/RepositoryIndexService.java
 │   │   │       └── store/IndexFileStore.java
 │   │   └── resources/
@@ -73,11 +74,10 @@ backend/
 │       │   ├── gitee/client/GiteeApiClientTest.java  # Gitee 客户端单元测试
 │       │   ├── repository/mapper/RepositoryMapperTest.java
 │       │   ├── repository/service/RepositorySyncServiceImplTest.java
-│       │   ├── index/                               # 倒排索引单元测试
-│       │   │   ├── builder/RepositoryIndexBuilderTest.java
-│       │   │   ├── search/MultiWayIndexSearcherTest.java
-│       │   │   ├── service/RepositoryIndexServiceImplTest.java
-│       │   │   └── store/IndexFileStoreTest.java
+│       │   ├── index/
+│       │   │   ├── RepositoryIndexServiceTest.java
+│       │   │   ├── segment/JiebaTextSegmenterTest.java
+│       │   │   └── service/RepositoryIndexServiceImplTest.java
 │       │   └── semantic/PythonSemanticSearchServiceTest.java
 ├── mvnw
 ├── mvnw.cmd
@@ -381,9 +381,10 @@ public class GiteeRepositorySyncService {
 2. 以 `repository.id` 作为文档 ID，构建 `id -> RepositoryDocument` 文档列表。
 3. 对 README 做文本归一化：去掉 HTML 标签、标点、符号等特殊字符，只保留中文、字母和数字，并统一小写。
 4. 使用 `JiebaSegmenter.SegMode.SEARCH` 搜索引擎模式分词。
-5. 统计每个词在每个文档中的词频，生成 `词项 -> [(文档 ID, 词频)]` 倒排表。
-6. 倒排表中的文档 ID 升序排列，供查询时多路归并使用。
-7. 保存为二进制索引文件，并替换内存中的索引快照。
+5. 在分词完成后过滤中英文停用词（英文如 the、and、for、this；中文如 的、了、一个、因为、进行），避免虚词进入倒排索引。
+6. 统计每个词在每个文档中的词频，生成 `词项 -> [(文档 ID, 词频)]` 倒排表。
+7. 倒排表中的文档 ID 升序排列，供查询时多路归并使用。
+8. 保存为二进制索引文件，并替换内存中的索引快照。
 
 调用示例：
 
@@ -397,7 +398,7 @@ List<RepositorySearchResult> results = repositoryIndexService.search("权限管�
 
 ### 检索与多路归并
 
-查询词同样先执行特殊字符清洗，再使用结巴搜索引擎模式分词。
+查询词同样先执行特殊字符清洗，再使用结巴搜索引擎模式分词，并过滤中英文停用词。
 [MultiWayIndexSearcher.java](src/main/java/com/codeseek/index/search/MultiWayIndexSearcher.java) 为每个查询词建立一路有序倒排列表游标，使用小根堆按文档 ID 进行多路归并：
 
 - 同一个文档 ID 的多个查询词词频一次性合并；
@@ -572,7 +573,8 @@ $env:MYSQL_PASSWORD = "你的 MySQL root 密码"
 - 8 个 Gitee API 客户端单元测试，覆盖分页、字段映射、私有仓库过滤、README 解码、404 和 HTTP 错误处理。
 - 3 个基于实际 MySQL 的 `RepositoryMapper` 集成测试，覆盖新增、批量新增、查询、分页、更新、删除和 `selectByIdsInOrder` 顺序。
 - 2 个基于实际 MySQL 的 `RepositorySyncServiceImpl` 测试，覆盖组织仓库兜底、README 填充和批量落库。
-- 7 个倒排索引单元测试，覆盖分词构建、多路归并排序、limit、空结果、索引文件保存和加载。
+- 2 个 `RepositoryIndexServiceTest` 测试，覆盖倒排索引重建和检索。
+- 6 个分词与中英文停用词测试，覆盖英文/中文停用词过滤、技术词与中文词保留、纯停用词查询。
 - 2 个混合检索测试，覆盖倒排与语义结果交集、语义顺序和语义服务不可用时的降级。
 - 2 个 Python 语义客户端测试，覆盖响应解析和 HTTP 错误转换。
 - 2 个 `SearchControllerTest` 接口测试。

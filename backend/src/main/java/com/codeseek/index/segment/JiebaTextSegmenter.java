@@ -11,7 +11,8 @@ import java.util.List;
  * 结巴分词封装。
  *
  * <p>统一使用 {@link JiebaSegmenter.SegMode#SEARCH} 搜索引擎模式：
- * 对长词再次切分，提高召回率，索引构建和查询都复用同一套分词规则。</p>
+ * 对长词再次切分，提高召回率，索引构建和查询都复用同一套分词规则。
+ * 分词完成后再过滤中英文停用词，避免虚词进入倒排索引和查询词。</p>
  */
 @Component
 public class JiebaTextSegmenter {
@@ -44,6 +45,8 @@ public class JiebaTextSegmenter {
                 words.add(word);
             }
         }
-        return words;
+
+        // 分词完成后再过滤停用词，避免中英文虚词进入倒排索引和查询词。
+        return StopWordFilter.filter(words);
     }
 }
