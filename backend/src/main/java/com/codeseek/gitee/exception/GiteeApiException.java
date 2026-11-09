@@ -1,11 +1,14 @@
 package com.codeseek.gitee.exception;
 
+import lombok.Getter;
+
 /**
  * Gitee 接口调用异常。
  *
  * <p>统一包装网络异常、HTTP 错误和响应解析异常，便于上层按需处理，
  * 避免业务代码直接依赖 Spring 的 HTTP 异常类型。</p>
  */
+@Getter
 public class GiteeApiException extends RuntimeException {
 
     /**
@@ -55,21 +58,4 @@ public class GiteeApiException extends RuntimeException {
         this.responseBody = responseBody;
     }
 
-    /**
-     * 获取 HTTP 状态码。
-     *
-     * @return HTTP 状态码，未知时为 -1
-     */
-    public int getStatusCode() {
-        return statusCode;
-    }
-
-    /**
-     * 获取 Gitee 原始响应体。
-     *
-     * @return 响应体，未知时为 {@code null}
-     */
-    public String getResponseBody() {
-        return responseBody;
-    }
 }
